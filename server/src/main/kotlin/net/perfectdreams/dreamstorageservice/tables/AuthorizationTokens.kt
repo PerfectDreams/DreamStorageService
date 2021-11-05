@@ -5,4 +5,5 @@ import org.jetbrains.exposed.dao.id.LongIdTable
 object AuthorizationTokens : LongIdTable() {
     val token = text("token")
     val description = text("description")
+    val allowedFilePath = text("allowed_file_path")
 }

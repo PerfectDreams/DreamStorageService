@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
+import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
@@ -27,11 +28,18 @@ class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
         private val logger = KotlinLogging.logger {}
     }
 
-    override suspend fun onAuthenticatedRequest(call: ApplicationCall) {
+    override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
         val request = Json.decodeFromString<DeleteFileLinkRequest>(call.receiveText())
+        val path = request.path
+
+        if (!path.startsWith(token.allowedFilePath)) {
+            logger.warn { "Token \"${token.description}\" tried to upload file at $path but they aren't allowed to do that!" }
+            call.respondText("", status = HttpStatusCode.Unauthorized)
+            return
+        }
 
         m.transaction {
-            val fileLink = FileLink.findById(request.path)
+            val fileLink = FileLink.findById(path)
             val storedFileId = fileLink?.storedFileId
             fileLink?.delete()
 
@@ -39,6 +47,6 @@ class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
                 m.checkAndCleanUpFile(storedFileId.value)
         }
 
-        logger.info { "Deleted file link ${request.path}" }
+        logger.info { "Deleted file link $path" }
     }
 }

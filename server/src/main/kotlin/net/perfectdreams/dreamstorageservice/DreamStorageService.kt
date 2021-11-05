@@ -3,6 +3,10 @@ package net.perfectdreams.dreamstorageservice
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import com.zaxxer.hikari.util.IsolationLevel
+import io.ktor.application.*
+import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +43,14 @@ class DreamStorageService {
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
     private val ISOLATION_LEVEL = IsolationLevel.TRANSACTION_REPEATABLE_READ // We use repeatable read to avoid dirty and non-repeatable reads! Very useful and safe!!
 
+    private val typesToCache = listOf(
+        ContentType.Text.CSS,
+        ContentType.Text.JavaScript,
+        ContentType.Application.JavaScript,
+        ContentType.Image.Any,
+        ContentType.Video.Any
+    )
+
     val database = connectToDatabase(
         HikariDataSource(
             createPostgreSQLHikari(
@@ -62,6 +74,25 @@ class DreamStorageService {
         }
 
         embeddedServer(Netty, port = 8080) {
+            // Enables gzip and deflate compression
+            install(Compression)
+
+            // Enables caching for the specified types in the typesToCache list
+            install(CachingHeaders) {
+                options { outgoingContent ->
+                    val contentType = outgoingContent.contentType
+                    if (contentType != null) {
+                        val contentTypeWithoutParameters = contentType.withoutParameters()
+                        val matches = typesToCache.any { contentTypeWithoutParameters.match(it) || contentTypeWithoutParameters == it }
+
+                        if (matches)
+                            CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 365 * 24 * 3600))
+                        else
+                            null
+                    } else null
+                }
+            }
+
             configureRouting(routes)
         }.start(wait = true)
     }

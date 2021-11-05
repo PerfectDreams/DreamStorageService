@@ -6,6 +6,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
+import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.sequins.ktor.BaseRoute
 import org.jetbrains.exposed.sql.select
@@ -15,7 +16,7 @@ abstract class RequiresAPIAuthenticationRoute(val m: DreamStorageService, path: 
         private val logger = KotlinLogging.logger {}
     }
 
-    abstract suspend fun onAuthenticatedRequest(call: ApplicationCall)
+    abstract suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken)
 
     override suspend fun onRequest(call: ApplicationCall) {
         val auth = call.request.header("Authorization")
@@ -33,7 +34,14 @@ abstract class RequiresAPIAuthenticationRoute(val m: DreamStorageService, path: 
 
         logger.trace { "$auth is trying to access $path (${clazzName}), using key $validKey" }
         if (validKey != null) {
-            onAuthenticatedRequest(call)
+            onAuthenticatedRequest(
+                call,
+                AuthorizationToken(
+                    validKey[AuthorizationTokens.token],
+                    validKey[AuthorizationTokens.description],
+                    validKey[AuthorizationTokens.allowedFilePath]
+                )
+            )
         } else {
             logger.warn { "$auth was rejected when trying to access $path ($clazzName)!" }
             call.respondText("", status = HttpStatusCode.Unauthorized)

@@ -1,6 +1,7 @@
 package net.perfectdreams.dreamstorageservice.routes
 
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
@@ -13,6 +14,7 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.UploadFileRequest
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
+import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
@@ -28,7 +30,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
         private val logger = KotlinLogging.logger {}
     }
 
-    override suspend fun onAuthenticatedRequest(call: ApplicationCall) {
+    override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
         withContext(Dispatchers.IO) {
             // Receive the uploaded file
             val multipart = call.receiveMultipart()
@@ -38,6 +40,12 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
 
             val attributes = Json.decodeFromString<UploadFileRequest>(attributesPart.value)
             val path = attributes.path
+
+            if (!path.startsWith(token.allowedFilePath)) {
+                logger.warn { "Token \"${token.description}\" tried to upload file at $path but they aren't allowed to do that!" }
+                call.respondText("", status = HttpStatusCode.Unauthorized)
+                return@withContext
+            }
 
             val fileToBeStored = filePart.streamProvider.invoke().readAllBytes()
             val contentType = filePart.contentType
