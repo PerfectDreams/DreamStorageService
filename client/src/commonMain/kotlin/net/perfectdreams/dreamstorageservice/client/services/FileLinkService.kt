@@ -44,12 +44,10 @@ class FileLinkService(client: DreamStorageServiceClient) : Service(client) {
     suspend fun deleteLink(
         request: DeleteFileLinkRequest
     ) {
-        val response = client.http.delete<HttpResponse>("${client.baseUrl}/api/v1/delete") {
+        val response = client.http.delete<HttpResponse>("${client.baseUrl}/api/$apiVersion/delete") {
             this.body = Json.encodeToString(request)
 
             header("Authorization", client.token)
         }
-
-        return Json.decodeFromString(response.readText())
     }
 }

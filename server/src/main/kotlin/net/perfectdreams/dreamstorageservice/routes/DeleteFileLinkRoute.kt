@@ -31,5 +31,6 @@ class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
         }
 
         logger.info { "Deleted file link $path" }
+        call.respondText("", status = HttpStatusCode.NoContent)
     }
 }
