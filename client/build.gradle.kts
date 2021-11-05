@@ -3,7 +3,7 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "net.perfectdreams.gabrielaimageserver"
+group = "net.perfectdreams.dreamstorageservice"
 version = Versions.DREAM_STORAGE_SERVICE
 
 repositories {
