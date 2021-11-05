@@ -49,7 +49,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
 
             // Allows the user to format the upload path with a SHA-256 hash, neat!
             val pathWithoutNamespace = unformattedPath.format(Hex.encodeHexString(checksum))
-            val path = token.namespace + "/" + path
+            val path = token.namespace + "/" + pathWithoutNamespace
 
             // Check if a file with the same hash exists
             val fileLink = m.transaction {
