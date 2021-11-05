@@ -8,7 +8,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.client.DreamStorageServiceClient
-import net.perfectdreams.dreamstorageservice.data.DeleteFileRequest
+import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
 import net.perfectdreams.dreamstorageservice.data.UploadFileRequest
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 
@@ -41,7 +41,7 @@ class FileLinkService(client: DreamStorageServiceClient) : Service(client) {
     }
 
     suspend fun deleteLink(
-        request: DeleteFileRequest
+        request: DeleteFileLinkRequest
     ) {
         val response = client.http.delete<HttpResponse>("${client.baseUrl}/api/v1/delete") {
             this.body = Json.encodeToString(request)

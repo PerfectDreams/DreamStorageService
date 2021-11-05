@@ -20,6 +20,7 @@ import net.perfectdreams.dreamstorageservice.entities.StoredFile
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.sequins.ktor.BaseRoute
+import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.dao.DaoEntityID
 import java.security.MessageDigest
 import java.time.Instant
@@ -39,9 +40,9 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             val attributesPart = parts.first { it.name == "attributes" } as PartData.FormItem
 
             val attributes = Json.decodeFromString<UploadFileRequest>(attributesPart.value)
-            val path = attributes.path
+            val unformattedPath = attributes.path
 
-            if (!path.startsWith(token.allowedFilePath)) {
+            if (!unformattedPath.startsWith(token.allowedFilePath)) {
                 logger.warn { "Token \"${token.description}\" tried to upload file at $path but they aren't allowed to do that!" }
                 call.respondText("", status = HttpStatusCode.Unauthorized)
                 return@withContext
@@ -52,6 +53,9 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
 
             // Calculate the checksum
             val checksum = calculateChecksum(SHA_256, fileToBeStored)
+
+            // Allows the user to format the upload path with a SHA-256 hash, neat!
+            val path = unformattedPath.format(Hex.encodeHexString(checksum))
 
             // Check if a file with the same hash exists
             val fileLink = m.transaction {
@@ -64,6 +68,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
                         this.mimeType = contentType.toString()
                         this.shaHash = checksum
                         this.uploadedAt = Instant.now()
+                        this.createdBy = token.id
                         this.data = fileToBeStored
                     }
                 }
@@ -81,6 +86,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
                     // See: https://github.com/JetBrains/Exposed/issues/1379
                     this.path = DaoEntityID(path, FileLinks)
                     this.createdAt = Instant.now()
+                    this.createdBy = token.id
                     this.storedFile = storedFile
                 }
 

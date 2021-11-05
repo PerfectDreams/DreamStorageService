@@ -10,5 +10,6 @@ class StoredFile(id: EntityID<Long>) : LongEntity(id) {
     var mimeType by StoredFiles.mimeType
     var shaHash by StoredFiles.shaHash
     var uploadedAt by StoredFiles.uploadedAt
+    var createdBy by StoredFiles.createdBy
     var data by StoredFiles.data
 }
