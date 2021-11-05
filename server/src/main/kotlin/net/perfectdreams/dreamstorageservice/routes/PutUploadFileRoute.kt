@@ -48,8 +48,8 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             val checksum = calculateChecksum(SHA_256, fileToBeStored)
 
             // Allows the user to format the upload path with a SHA-256 hash, neat!
-            val path = unformattedPath.format(Hex.encodeHexString(checksum))
-            val fullPath = token.namespace + "/" + path
+            val pathWithoutNamespace = unformattedPath.format(Hex.encodeHexString(checksum))
+            val path = token.namespace + "/" + path
 
             // Check if a file with the same hash exists
             val fileLink = m.transaction {
@@ -95,8 +95,8 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             call.respondText(
                 Json.encodeToString(
                     UploadFileResponse(
-                        fileLink.path.value,
-                        fullPath
+                        pathWithoutNamespace,
+                        path
                     )
                 )
             )
