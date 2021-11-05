@@ -21,7 +21,7 @@ class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
         val request = Json.decodeFromString<DeleteFileLinkRequest>(call.receiveText())
         val path = request.path
 
-        if (!path.startsWith(token.allowedFilePath)) {
+        if (!path.startsWith(token.namespace)) {
             logger.warn { "Token \"${token.description}\" tried to upload file at $path but they aren't allowed to do that!" }
             call.respondText("", status = HttpStatusCode.Unauthorized)
             return

@@ -6,5 +6,5 @@ data class AuthorizationToken(
     val id: EntityID<Long>,
     val token: String,
     val description: String,
-    val allowedFilePath: String
+    val namespace: String
 )

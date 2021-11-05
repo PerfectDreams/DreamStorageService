@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UploadFileResponse(
-    val path: String
+    val path: String,
+    val fullPath: String
 )

@@ -19,7 +19,6 @@ import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
-import net.perfectdreams.sequins.ktor.BaseRoute
 import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.dao.DaoEntityID
 import java.security.MessageDigest
@@ -42,12 +41,6 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             val attributes = Json.decodeFromString<UploadFileRequest>(attributesPart.value)
             val unformattedPath = attributes.path
 
-            if (!unformattedPath.startsWith(token.allowedFilePath)) {
-                logger.warn { "Token \"${token.description}\" tried to upload file at $path but they aren't allowed to do that!" }
-                call.respondText("", status = HttpStatusCode.Unauthorized)
-                return@withContext
-            }
-
             val fileToBeStored = filePart.streamProvider.invoke().readAllBytes()
             val contentType = filePart.contentType
 
@@ -56,6 +49,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
 
             // Allows the user to format the upload path with a SHA-256 hash, neat!
             val path = unformattedPath.format(Hex.encodeHexString(checksum))
+            val fullPath = token.namespace + "/" + path
 
             // Check if a file with the same hash exists
             val fileLink = m.transaction {
@@ -101,7 +95,8 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             call.respondText(
                 Json.encodeToString(
                     UploadFileResponse(
-                        fileLink.path.value
+                        fileLink.path.value,
+                        fullPath
                     )
                 )
             )

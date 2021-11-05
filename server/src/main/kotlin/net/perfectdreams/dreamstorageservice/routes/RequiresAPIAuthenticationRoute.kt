@@ -40,7 +40,7 @@ abstract class RequiresAPIAuthenticationRoute(val m: DreamStorageService, path: 
                     validKey[AuthorizationTokens.id],
                     validKey[AuthorizationTokens.token],
                     validKey[AuthorizationTokens.description],
-                    validKey[AuthorizationTokens.allowedFilePath]
+                    validKey[AuthorizationTokens.namespace]
                 )
             )
         } else {
