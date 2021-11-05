@@ -9,6 +9,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.client.DreamStorageServiceClient
 import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
+import net.perfectdreams.dreamstorageservice.data.GetNamespaceResponse
 import net.perfectdreams.dreamstorageservice.data.UploadFileRequest
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 

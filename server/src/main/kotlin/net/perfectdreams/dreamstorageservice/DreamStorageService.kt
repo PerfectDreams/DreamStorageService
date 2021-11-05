@@ -15,6 +15,7 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
 import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
 import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
@@ -38,6 +39,7 @@ class DreamStorageService {
         PutUploadFileRoute(this),
         DeleteFileLinkRoute(this),
         GetFileFromFileLinkRoute(this),
+        GetNamespaceRoute(this)
     )
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
