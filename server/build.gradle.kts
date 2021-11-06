@@ -47,7 +47,6 @@ jib {
         // This image comes from the "docker" folder Dockerfile!
         // Don't forget to build the image before compiling DreamStorageService!
         // https://github.com/GoogleContainerTools/jib/issues/1468
-        buildDir
-        image = "tar://../docker/image.tar"
+        image = "tar://${File(rootDir, "docker/image.tar").absoluteFile}"
     }
 }

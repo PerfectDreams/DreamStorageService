@@ -10,6 +10,8 @@ local.properties
 .loadpath
 .recommenders
 
+docker/image.tar
+
 config.json
 lib/
 
