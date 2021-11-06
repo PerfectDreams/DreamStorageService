@@ -45,6 +45,7 @@ jib {
 
     from {
         // This image comes from the "docker" folder Dockerfile!
-        image = "docker.io/library/dreamstorageservice-base@sha256:9e0ce87fb5da6ed1cf94e0693f1956e8bbf7d605c37a058a0094863ed8604971"
+        // Don't forget to build the image before compiling DreamStorageService!
+        image = "dreamstorageservice-base@sha256:9e0ce87fb5da6ed1cf94e0693f1956e8bbf7d605c37a058a0094863ed8604971"
     }
 }
