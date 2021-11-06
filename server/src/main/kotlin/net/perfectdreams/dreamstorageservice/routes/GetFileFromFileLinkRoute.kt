@@ -73,8 +73,10 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                     }
 
                     if (cachedManipulation != null) {
+                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale; using cached manipulation" }
                         call.respondBytes(cachedManipulation.data, mimeType)
                     } else {
+                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale; creating manipulated image from scratch" }
                         var manipulatedImage: BufferedImage? = null
 
                         if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
@@ -138,6 +140,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                     }
                 }
             } else {
+                logger.info { "User requested file in link $joinedPath, no manipulation necessary" }
                 call.respondBytes(storedFile.data, mimeType)
             }
         }
