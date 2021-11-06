@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
+import io.ktor.util.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.DreamStorageService
@@ -15,10 +16,10 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 
-class DeleteAllowedImageCropOnFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/allowed-crops") {
+class DeleteAllowedImageCropOnFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/files/{fileId}/allowed-crops") {
     override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
+        val fileId = call.parameters.getOrFail("fileId").toLongOrNull()
         val request = Json.decodeFromString<DeleteAllowedImageCropRequest>(call.receiveText())
-        val fileId = request.fileId
 
         m.transaction {
             val file = StoredFiles.slice(StoredFiles.id)
