@@ -24,6 +24,9 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.0")
     implementation("io.github.microutils:kotlin-logging:2.0.11")
 
+    // Caching
+    implementation("com.github.ben-manes.caffeine:caffeine:3.0.4")
+
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${Versions.KOTLINX_SERIALIZATION}")
 
     testImplementation("io.ktor:ktor-server-tests:${Versions.KTOR}")

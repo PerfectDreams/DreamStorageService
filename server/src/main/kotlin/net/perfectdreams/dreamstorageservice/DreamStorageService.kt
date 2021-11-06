@@ -19,6 +19,7 @@ import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
 import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
+import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.DEFAULT_REPETITION_ATTEMPTS
@@ -70,6 +71,7 @@ class DreamStorageService {
                 SchemaUtils.createMissingTablesAndColumns(
                     StoredFiles,
                     FileLinks,
+                    ManipulatedStoredFiles,
                     AuthorizationTokens
                 )
             }
@@ -113,6 +115,7 @@ class DreamStorageService {
         // Delete file because it is unused!
         if (count == 0L) {
             logger.info { "Deleting Stored File $storedFileId because there isn't any other link referencing it..." }
+            ManipulatedStoredFiles.deleteWhere { ManipulatedStoredFiles.storedFile eq storedFileId }
             StoredFiles.deleteWhere { StoredFiles.id eq storedFileId }
         }
     }
