@@ -7,7 +7,7 @@ object ManipulatedStoredFiles : LongIdTable() {
     val mimeType = text("mime_type")
     val createdAt = timestamp("created_at")
     val cropX = integer("crop_x").nullable()
-    val cropY = integer("crop_x").nullable()
+    val cropY = integer("crop_y").nullable()
     val cropWidth = integer("crop_width").nullable()
     val cropHeight = integer("crop_height").nullable()
     val scale = integer("scale").nullable()
