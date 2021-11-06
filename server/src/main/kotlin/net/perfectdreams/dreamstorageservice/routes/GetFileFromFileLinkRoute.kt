@@ -47,15 +47,15 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             logger.info { "User requested file in link $joinedPath, but the file doesn't exist!" }
             call.respondText("", status = HttpStatusCode.NotFound)
         } else {
-            logger.info { "User requested file in link $joinedPath" }
-
-            val mimeType = ContentType.parse(storedFile.mimeType)
-
             val cropX = call.request.queryParameters["crop_x"]?.toIntOrNull()
             val cropY = call.request.queryParameters["crop_y"]?.toIntOrNull()
             val cropWidth = call.request.queryParameters["crop_width"]?.toIntOrNull()
             val cropHeight = call.request.queryParameters["crop_height"]?.toIntOrNull()
             val scale = call.request.queryParameters["scale"]?.toIntOrNull()
+
+            logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale" }
+
+            val mimeType = ContentType.parse(storedFile.mimeType)
 
             val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || scale != null
 
