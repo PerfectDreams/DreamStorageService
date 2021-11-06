@@ -12,9 +12,11 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.ManipulatedStoredFile
+import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
 import net.perfectdreams.sequins.ktor.BaseRoute
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.select
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -44,6 +46,9 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             logger.info { "User requested file in link $joinedPath, but the file doesn't exist!" }
             call.respondText("", status = HttpStatusCode.NotFound)
         } else {
+            val mimeType = ContentType.parse(storedFile.mimeType)
+            val isImage = mimeType.contentType == "image"
+
             val cropX = call.request.queryParameters["crop_x"]?.toIntOrNull()
             val cropY = call.request.queryParameters["crop_y"]?.toIntOrNull()
             val cropWidth = call.request.queryParameters["crop_width"]?.toIntOrNull()
@@ -52,16 +57,21 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
 
             logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size" }
 
-            val mimeType = ContentType.parse(storedFile.mimeType)
-
             val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null
 
             if (requiresManipulation) {
+                // Can't crop/change size of something that isn't an image, right? lol
+                if (!isImage) {
+                    call.respondText("", status = HttpStatusCode.BadRequest)
+                    return
+                }
+
                 val mutex = manipulationMutexes.getOrPut(joinedPath) { Mutex() }
                 mutex.withLock {
                     val cachedManipulation = m.transaction {
                         ManipulatedStoredFile.find {
-                            ManipulatedStoredFiles.cropX eq cropX and
+                            ManipulatedStoredFiles.storedFile eq storedFile.id and
+                                    (ManipulatedStoredFiles.cropX eq cropX) and
                                     (ManipulatedStoredFiles.cropY eq cropY) and
                                     (ManipulatedStoredFiles.cropWidth eq cropWidth) and
                                     (ManipulatedStoredFiles.cropHeight eq cropHeight) and
@@ -79,6 +89,23 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
                             if (mimeType != ContentType.Image.JPEG && mimeType != ContentType.Image.PNG) {
                                 call.respondText("", status = HttpStatusCode.BadRequest)
+                                return
+                            }
+
+                            // Check if this crop request is allowed
+                            // (To avoid malicious users creating a lot of crop requests)
+                            val isCropAllowed = m.transaction {
+                                AllowedImageCrops.select {
+                                    AllowedImageCrops.storedFile eq storedFile.id and
+                                            (AllowedImageCrops.cropX eq cropX) and
+                                            (AllowedImageCrops.cropY eq cropY) and
+                                            (AllowedImageCrops.cropWidth eq cropWidth) and
+                                            (AllowedImageCrops.cropHeight eq cropHeight)
+                                }.count() != 0L
+                            }
+
+                            if (!isCropAllowed) {
+                                call.respondText("", status = HttpStatusCode.Unauthorized)
                                 return
                             }
 

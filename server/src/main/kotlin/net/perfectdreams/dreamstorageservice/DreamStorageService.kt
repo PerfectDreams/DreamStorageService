@@ -13,10 +13,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
+import net.perfectdreams.dreamstorageservice.routes.DeleteAllowedImageCropOnFileRoute
 import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
+import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropOnFileRoute
 import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
+import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
@@ -29,7 +32,6 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
 
 class DreamStorageService {
     companion object {
@@ -40,7 +42,9 @@ class DreamStorageService {
         PutUploadFileRoute(this),
         DeleteFileLinkRoute(this),
         GetFileFromFileLinkRoute(this),
-        GetNamespaceRoute(this)
+        GetNamespaceRoute(this),
+        PutAllowedImageCropOnFileRoute(this),
+        DeleteAllowedImageCropOnFileRoute(this)
     )
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
@@ -72,7 +76,8 @@ class DreamStorageService {
                     StoredFiles,
                     FileLinks,
                     ManipulatedStoredFiles,
-                    AuthorizationTokens
+                    AuthorizationTokens,
+                    AllowedImageCrops
                 )
             }
         }
