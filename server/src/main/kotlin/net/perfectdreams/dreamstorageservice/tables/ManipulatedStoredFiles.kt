@@ -10,12 +10,12 @@ object ManipulatedStoredFiles : LongIdTable() {
     val cropY = integer("crop_y").nullable()
     val cropWidth = integer("crop_width").nullable()
     val cropHeight = integer("crop_height").nullable()
-    val scale = integer("scale").nullable()
+    val size = integer("size").nullable()
 
     val storedFile = reference("stored_file", StoredFiles).index()
     val data = binary("data")
 
     init {
-        index(true, id, cropX, cropY, cropWidth, cropHeight, scale)
+        index(true, id, cropX, cropY, cropWidth, cropHeight, size)
     }
 }

@@ -14,7 +14,7 @@ class ManipulatedStoredFile(id: EntityID<Long>) : LongEntity(id) {
     var cropY by ManipulatedStoredFiles.cropY
     var cropWidth by ManipulatedStoredFiles.cropWidth
     var cropHeight by ManipulatedStoredFiles.cropHeight
-    var scale by ManipulatedStoredFiles.scale
+    var size by ManipulatedStoredFiles.size
 
     var storedFile by StoredFile referencedOn ManipulatedStoredFiles.storedFile
     var data by ManipulatedStoredFiles.data

@@ -12,11 +12,8 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.ManipulatedStoredFile
-import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens.token
-import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
 import net.perfectdreams.sequins.ktor.BaseRoute
-import org.jetbrains.exposed.dao.DaoEntityID
 import org.jetbrains.exposed.sql.and
 import java.awt.Image
 import java.awt.image.BufferedImage
@@ -51,13 +48,13 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             val cropY = call.request.queryParameters["crop_y"]?.toIntOrNull()
             val cropWidth = call.request.queryParameters["crop_width"]?.toIntOrNull()
             val cropHeight = call.request.queryParameters["crop_height"]?.toIntOrNull()
-            val scale = call.request.queryParameters["scale"]?.toIntOrNull()
+            val size = call.request.queryParameters["size"]?.toIntOrNull()
 
-            logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale" }
+            logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size" }
 
             val mimeType = ContentType.parse(storedFile.mimeType)
 
-            val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || scale != null
+            val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null
 
             if (requiresManipulation) {
                 val mutex = manipulationMutexes.getOrPut(joinedPath) { Mutex() }
@@ -68,15 +65,15 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                     (ManipulatedStoredFiles.cropY eq cropY) and
                                     (ManipulatedStoredFiles.cropWidth eq cropWidth) and
                                     (ManipulatedStoredFiles.cropHeight eq cropHeight) and
-                                    (ManipulatedStoredFiles.scale eq scale)
+                                    (ManipulatedStoredFiles.size eq size)
                         }.firstOrNull()
                     }
 
                     if (cachedManipulation != null) {
-                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale; using cached manipulation" }
+                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; using cached manipulation" }
                         call.respondBytes(cachedManipulation.data, mimeType)
                     } else {
-                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; scale = $scale; creating manipulated image from scratch" }
+                        logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; creating manipulated image from scratch" }
                         var manipulatedImage: BufferedImage? = null
 
                         if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
@@ -89,23 +86,23 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                             manipulatedImage = image.getSubimage(cropX, cropY, cropWidth, cropHeight)
                         }
 
-                        if (scale != null) {
+                        if (size != null) {
                             if (mimeType != ContentType.Image.JPEG && mimeType != ContentType.Image.PNG) {
                                 call.respondText("", status = HttpStatusCode.BadRequest)
                                 return
                             }
 
-                            if (scale == 16 || scale == 32 || scale == 64 || scale == 128 || scale == 256 || scale == 512) {
-                                val image = withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) }
+                            if (size == 16 || size == 32 || size == 64 || size == 128 || size == 256 || size == 512) {
+                                val image = manipulatedImage ?: withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) }
                                 val targetWidth: Int
                                 val targetHeight: Int
 
                                 if (image.height > image.width) {
-                                    targetHeight = scale
-                                    targetWidth = (scale * image.width) / image.height
+                                    targetHeight = size
+                                    targetWidth = (size * image.width) / image.height
                                 } else {
-                                    targetWidth = scale
-                                    targetHeight = (scale * image.height) / image.width
+                                    targetWidth = size
+                                    targetHeight = (size * image.height) / image.width
                                 }
 
                                 manipulatedImage = toBufferedImage(image.getScaledInstance(targetWidth, targetHeight, BufferedImage.SCALE_SMOOTH))
@@ -116,6 +113,8 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         }
 
                         val baos = ByteArrayOutputStream()
+                        ImageIO.write(manipulatedImage, if (mimeType == ContentType.Image.JPEG) "jpeg" else "png", baos)
+                        val byteArrayData = baos.toByteArray()
 
                         // Store the manipulated file in the database!
                         m.transaction {
@@ -128,15 +127,14 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                 this.cropY = cropY
                                 this.cropWidth = cropWidth
                                 this.cropHeight = cropHeight
-                                this.scale = scale
+                                this.size = size
                                 this.createdAt = Instant.now()
                                 this.storedFile = storedFile
+                                this.data = byteArrayData
                             }
                         }
 
-                        ImageIO.write(manipulatedImage, if (mimeType == ContentType.Image.JPEG) "jpeg" else "png", baos)
-
-                        call.respondBytes(baos.toByteArray(), mimeType)
+                        call.respondBytes(byteArrayData, mimeType)
                     }
                 }
             } else {
