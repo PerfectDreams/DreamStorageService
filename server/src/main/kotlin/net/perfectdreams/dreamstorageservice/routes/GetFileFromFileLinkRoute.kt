@@ -51,11 +51,11 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
 
             val mimeType = ContentType.parse(storedFile.mimeType)
 
-            val cropX = call.parameters["crop_x"]?.toIntOrNull()
-            val cropY = call.parameters["crop_y"]?.toIntOrNull()
-            val cropWidth = call.parameters["crop_width"]?.toIntOrNull()
-            val cropHeight = call.parameters["crop_height"]?.toIntOrNull()
-            val scale = call.parameters["scale"]?.toIntOrNull()
+            val cropX = call.request.queryParameters["crop_x"]?.toIntOrNull()
+            val cropY = call.request.queryParameters["crop_y"]?.toIntOrNull()
+            val cropWidth = call.request.queryParameters["crop_width"]?.toIntOrNull()
+            val cropHeight = call.request.queryParameters["crop_height"]?.toIntOrNull()
+            val scale = call.request.queryParameters["scale"]?.toIntOrNull()
 
             val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || scale != null
 
