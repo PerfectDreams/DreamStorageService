@@ -171,6 +171,19 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         if (manipulatedImage == null)
                             manipulatedImage = withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) }
 
+                        requireNotNull(manipulatedImage) { "Manipulated image is null!" } // This should never be null at this point, but hey, who knows
+
+                        // If the JPEG image has alpha, the result file will be 0
+                        // https://stackoverflow.com/a/66954103/7271796
+                        if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG && manipulatedImage.type == BufferedImage.TYPE_INT_RGB) {
+                            val newBufferedImage = BufferedImage(
+                                manipulatedImage.width,
+                                manipulatedImage.height, BufferedImage.TYPE_INT_RGB
+                            )
+                            newBufferedImage.graphics.drawImage(manipulatedImage, 0, 0, null)
+                            manipulatedImage = newBufferedImage
+                        }
+
                         val baos = ByteArrayOutputStream()
                         ImageIO.write(
                             manipulatedImage,
