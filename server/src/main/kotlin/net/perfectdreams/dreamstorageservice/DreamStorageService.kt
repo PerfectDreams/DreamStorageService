@@ -11,6 +11,7 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
 import net.perfectdreams.dreamstorageservice.routes.DeleteAllowedImageCropOnFileRoute
@@ -177,7 +178,7 @@ class DreamStorageService {
         throw lastException ?: RuntimeException("This should never happen")
     }
 
-    fun optimizeImage(type: ContentType, data: ByteArray): ByteArray {
+    suspend fun optimizeImage(type: ContentType, data: ByteArray): ByteArray {
         require(type.contentType == "image") { "You can't optimize something that isn't a image!" }
 
         return when (type) {
@@ -187,7 +188,7 @@ class DreamStorageService {
         }
     }
 
-    private fun optimizePNG(data: ByteArray): ByteArray {
+    private suspend fun optimizePNG(data: ByteArray): ByteArray {
         logger.info { "Optimizing PNG image, size = ${data.size}" }
         val proc = ProcessBuilder(
             (System.getenv("DSS_PNGQUANT_PATH") ?: "/usr/bin/pngquant"),
@@ -201,7 +202,7 @@ class DreamStorageService {
 
         val result = proc.inputStream.readAllBytes()
 
-        val s = proc.waitFor()
+        val s = withContext(Dispatchers.IO) { proc.waitFor() }
         if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
             logger.warn { "Something went wrong while trying to optimize PNG image! Status = $s" }
             return data
@@ -216,7 +217,7 @@ class DreamStorageService {
         return result
     }
 
-    private fun optimizeJPEG(data: ByteArray): ByteArray {
+    private suspend fun optimizeJPEG(data: ByteArray): ByteArray {
         logger.info { "Optimizing JPG image, size = ${data.size}" }
         val proc = ProcessBuilder(
             (System.getenv("DSS_JPEGOPTIM_PATH") ?: "/usr/bin/jpegoptim"),
@@ -231,7 +232,7 @@ class DreamStorageService {
 
         val result = proc.inputStream.readAllBytes()
 
-        val s = proc.waitFor()
+        val s = withContext(Dispatchers.IO) { proc.waitFor() }
         if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
             logger.warn { "Something went wrong while trying to optimize JPG image! Status = $s" }
             return data
