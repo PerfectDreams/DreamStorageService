@@ -14,17 +14,19 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
-import net.perfectdreams.dreamstorageservice.routes.DeleteAllowedImageCropOnFileRoute
 import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
-import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropOnFileRoute
+import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnFileRoute
 import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
 import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
+import net.perfectdreams.dreamstorageservice.utils.FileUtils
+import net.perfectdreams.dreamstorageservice.utils.UploadedAsFileType
+import net.perfectdreams.dreamstorageservice.utils.exposed.createOrUpdatePostgreSQLEnum
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.DEFAULT_REPETITION_ATTEMPTS
 import org.jetbrains.exposed.sql.Database
@@ -33,7 +35,6 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import kotlin.concurrent.thread
 
 class DreamStorageService {
     companion object {
@@ -45,8 +46,7 @@ class DreamStorageService {
         DeleteFileLinkRoute(this),
         GetFileFromFileLinkRoute(this),
         GetNamespaceRoute(this),
-        PutAllowedImageCropOnFileRoute(this),
-        DeleteAllowedImageCropOnFileRoute(this)
+        PutAllowedImageCropsOnFileRoute(this)
     )
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
@@ -70,10 +70,12 @@ class DreamStorageService {
             )
         )
     )
+    val fileUtils = FileUtils(this)
 
     fun start() {
         runBlocking {
             transaction {
+                createOrUpdatePostgreSQLEnum(UploadedAsFileType.values())
                 SchemaUtils.createMissingTablesAndColumns(
                     StoredFiles,
                     FileLinks,
@@ -122,6 +124,7 @@ class DreamStorageService {
         // Delete file because it is unused!
         if (count == 0L) {
             logger.info { "Deleting Stored File $storedFileId because there isn't any other link referencing it..." }
+            AllowedImageCrops.deleteWhere { AllowedImageCrops.storedFile eq storedFileId }
             ManipulatedStoredFiles.deleteWhere { ManipulatedStoredFiles.storedFile eq storedFileId }
             StoredFiles.deleteWhere { StoredFiles.id eq storedFileId }
         }

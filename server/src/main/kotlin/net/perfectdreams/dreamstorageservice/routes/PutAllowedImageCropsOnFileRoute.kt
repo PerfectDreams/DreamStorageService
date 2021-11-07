@@ -8,18 +8,20 @@ import io.ktor.util.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.DreamStorageService
-import net.perfectdreams.dreamstorageservice.data.AddAllowedImageCropRequest
+import net.perfectdreams.dreamstorageservice.data.AllowedImageCropsListRequest
 import net.perfectdreams.dreamstorageservice.entities.AllowedImageCrop
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
+import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PutAllowedImageCropOnFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/files/{fileId}/allowed-crops") {
+class PutAllowedImageCropsOnFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/files/{fileId}/allowed-crops") {
     override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
         val fileId = call.parameters.getOrFail("fileId").toLongOrNull()
-        val request = Json.decodeFromString<AddAllowedImageCropRequest>(call.receiveText())
+        val request = Json.decodeFromString<AllowedImageCropsListRequest>(call.receiveText())
 
         m.transaction {
             val file = StoredFiles.slice(StoredFiles.id)
@@ -32,13 +34,16 @@ class PutAllowedImageCropOnFileRoute(m: DreamStorageService) : RequiresAPIAuthen
                 return@transaction
             }
 
-            AllowedImageCrop.new {
-                this.cropWidth = request.cropWidth
-                this.cropHeight = request.cropHeight
-                this.cropX = request.cropX
-                this.cropY = request.cropY
-                this.createdAt = Instant.now()
-                this.storedFileId = file[StoredFiles.id]
+            AllowedImageCrops.deleteWhere { AllowedImageCrops.storedFile eq file[StoredFiles.id] }
+            for (crop in request.crops) {
+                AllowedImageCrop.new {
+                    this.cropWidth = crop.width
+                    this.cropHeight = crop.height
+                    this.cropX = crop.x
+                    this.cropY = crop.y
+                    this.createdAt = Instant.now()
+                    this.storedFileId = file[StoredFiles.id]
+                }
             }
         }
 
