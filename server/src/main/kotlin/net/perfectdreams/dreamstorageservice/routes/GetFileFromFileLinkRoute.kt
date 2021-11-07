@@ -167,10 +167,13 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                             }
                         }
 
-                        val baos = ByteArrayOutputStream()
                         // We read the image if it is null because maybe we just want to convert it to another file type
+                        if (manipulatedImage == null)
+                            manipulatedImage = withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) }
+
+                        val baos = ByteArrayOutputStream()
                         ImageIO.write(
-                            withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) } ?: manipulatedImage,
+                            manipulatedImage,
                             if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG) "jpg" else "png",
                             baos
                         )
