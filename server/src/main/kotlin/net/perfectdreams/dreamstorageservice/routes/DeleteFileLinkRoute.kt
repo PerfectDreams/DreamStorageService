@@ -13,6 +13,7 @@ import net.perfectdreams.dreamstorageservice.data.CreateImageLinkResponse
 import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
 import net.perfectdreams.dreamstorageservice.data.DeleteImageLinkRequest
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
+import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.ImageLink
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ImageLinks
@@ -33,25 +34,16 @@ class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
         val request = Json.decodeFromString<DeleteFileLinkRequest>(call.receiveText())
 
         m.transaction {
-            val linksThatShouldBeDeleted = mutableListOf<ResultRow>()
+            val fileLink = FileLinks.select {
+                FileLinks.createdBy eq token.id and (FileLinks.folder eq request.folder) and (FileLinks.file eq request.file)
+            }.firstOrNull() ?: return@transaction
 
-            for (link in request.links) {
-                linksThatShouldBeDeleted.addAll(
-                    FileLinks.select {
-                        FileLinks.createdBy eq token.id and (FileLinks.folder eq link.folder) and (FileLinks.file eq link.file)
-                    }
-                )
-            }
+            val storedFile = fileLink[FileLinks.storedFile]
 
-            val affectedImageIds = linksThatShouldBeDeleted.map { it[FileLinks.storedFile].value }
-                .distinct()
+            FileLinks.deleteWhere { FileLinks.id eq fileLink[FileLinks.id] }
 
-            FileLinks.deleteWhere { FileLinks.id inList linksThatShouldBeDeleted.map { it[FileLinks.id] }}
-
-            // Automatically clean up images that do not have any links pointing to them
-            affectedImageIds.forEach {
-                m.checkAndCleanUpFile(it)
-            }
+            // Automatically clean up files that do not have any links pointing to them
+            m.checkAndCleanUpFile(storedFile.value)
         }
 
         call.respondJson("")

@@ -13,10 +13,13 @@ import net.perfectdreams.dreamstorageservice.data.CreateImageLinkResponse
 import net.perfectdreams.dreamstorageservice.data.DeleteImageLinkRequest
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.ImageLink
+import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
@@ -31,25 +34,16 @@ class DeleteImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRo
         val request = Json.decodeFromString<DeleteImageLinkRequest>(call.receiveText())
 
         m.transaction {
-            val linksThatShouldBeDeleted = mutableListOf<ResultRow>()
+            val fileLink = ImageLinks.select {
+                ImageLinks.createdBy eq token.id and (ImageLinks.folder eq request.folder) and (ImageLinks.file eq request.file)
+            }.firstOrNull() ?: return@transaction
 
-            for (link in request.links) {
-                linksThatShouldBeDeleted.addAll(
-                    ImageLinks.select {
-                        ImageLinks.createdBy eq token.id and (ImageLinks.folder eq link.folder) and (ImageLinks.file eq link.file)
-                    }
-                )
-            }
+            val storedFile = fileLink[ImageLinks.storedImage]
 
-            val affectedImageIds = linksThatShouldBeDeleted.map { it[ImageLinks.storedImage].value }
-                .distinct()
+            ImageLinks.deleteWhere { ImageLinks.id eq fileLink[ImageLinks.id] }
 
-            ImageLinks.deleteWhere { ImageLinks.id inList linksThatShouldBeDeleted.map { it[ImageLinks.id] }}
-
-            // Automatically clean up images that do not have any links pointing to them
-            affectedImageIds.forEach {
-                m.checkAndCleanUpImage(it)
-            }
+            // Automatically clean up files that do not have any links pointing to them
+            m.checkAndCleanUpImage(storedFile.value)
         }
 
         call.respondJson("")

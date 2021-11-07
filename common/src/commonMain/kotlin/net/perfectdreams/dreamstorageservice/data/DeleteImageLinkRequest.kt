@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DeleteImageLinkRequest(
-    val links: List<LinkInfo>
+    val folder: String,
+    val file: String
 )

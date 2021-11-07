@@ -29,7 +29,7 @@ class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute
         val request = Json.decodeFromString<CreateImageLinkRequest>(call.receiveText())
         val imageId = request.imageId
 
-        val imageLinks = m.transaction {
+        val imageLink = m.transaction {
             val alreadyStoredImage = StoredImages.slice(StoredImages.id)
                 .select {
                     StoredImages.id eq imageId
@@ -39,14 +39,12 @@ class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute
 
             val shaHashAsString = Hex.encodeHexString(alreadyStoredImage[StoredImages.shaHash])
 
-            request.links.map {
-                ImageLink.new {
-                    folder = it.folder.format(shaHashAsString)
-                    file = it.file.format(shaHashAsString)
-                    createdAt = Instant.now()
-                    createdBy = token.id
-                    storedImageId = alreadyStoredImage[StoredImages.id]
-                }
+            ImageLink.new {
+                folder = request.folder.format(shaHashAsString)
+                file = request.file.format(shaHashAsString)
+                createdAt = Instant.now()
+                createdBy = token.id
+                storedImageId = alreadyStoredImage[StoredImages.id]
             }
         } ?: run {
             call.respondText("", status = HttpStatusCode.NotFound)
@@ -55,15 +53,9 @@ class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute
 
         call.respondJson(
             CreateImageLinkResponse(
-                imageLinks.map {
-                    CreateImageLinkResponse.ImageLink(
-                        it.id.value,
-                        LinkInfo(
-                            it.folder,
-                            it.file
-                        )
-                    )
-                }
+                imageLink.id.value,
+                imageLink.folder,
+                imageLink.file
             )
         )
     }

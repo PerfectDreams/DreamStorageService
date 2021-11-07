@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CreateImageLinkRequest(
     val imageId: Long,
-    val links: List<LinkInfo>
+    val folder: String,
+    val file: String
 )

@@ -10,7 +10,6 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.CreateFileLinkRequest
 import net.perfectdreams.dreamstorageservice.data.CreateFileLinkResponse
-import net.perfectdreams.dreamstorageservice.data.CreateImageLinkResponse
 import net.perfectdreams.dreamstorageservice.data.LinkInfo
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
@@ -29,7 +28,7 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
         val request = Json.decodeFromString<CreateFileLinkRequest>(call.receiveText())
         val fileId = request.fileId
 
-        val fileLinks = m.transaction {
+        val fileLink = m.transaction {
             val alreadyStoredFile = StoredFiles.slice(StoredFiles.id, StoredFiles.shaHash)
                 .select {
                     StoredFiles.id eq fileId
@@ -39,14 +38,12 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
 
             val shaHashAsString = Hex.encodeHexString(alreadyStoredFile[StoredFiles.shaHash])
 
-            request.links.map {
-                FileLink.new {
-                    folder = it.folder.format(shaHashAsString)
-                    file = it.file.format(shaHashAsString)
-                    createdAt = Instant.now()
-                    createdBy = token.id
-                    storedFileId = alreadyStoredFile[StoredFiles.id]
-                }
+            FileLink.new {
+                folder = request.folder.format(shaHashAsString)
+                file = request.file.format(shaHashAsString)
+                createdAt = Instant.now()
+                createdBy = token.id
+                storedFileId = alreadyStoredFile[StoredFiles.id]
             }
         } ?: run {
             call.respondText("", status = HttpStatusCode.NotFound)
@@ -55,15 +52,9 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
 
         call.respondJson(
             CreateFileLinkResponse(
-                fileLinks.map {
-                    CreateFileLinkResponse.FileLink(
-                        it.id.value,
-                        LinkInfo(
-                            it.folder,
-                            it.file
-                        )
-                    )
-                }
+                fileLink.id.value,
+                fileLink.folder,
+                fileLink.file
             )
         )
     }

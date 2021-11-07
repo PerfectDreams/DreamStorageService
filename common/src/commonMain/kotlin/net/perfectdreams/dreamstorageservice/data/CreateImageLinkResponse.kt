@@ -4,11 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CreateImageLinkResponse(
-    val links: List<ImageLink>
-) {
-    @Serializable
-    data class ImageLink(
-        val id: Long,
-        val linkInfo: LinkInfo
-    )
-}
+    val id: Long,
+    val folder: String,
+    val file: String
+)
