@@ -14,6 +14,7 @@ import net.perfectdreams.dreamstorageservice.data.AllowedImageCropsListRequest
 import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
 import net.perfectdreams.dreamstorageservice.data.GetNamespaceResponse
 import net.perfectdreams.dreamstorageservice.data.UploadFileRequest
+import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.data.UploadImageRequest
 import net.perfectdreams.dreamstorageservice.data.UploadRequest
 
@@ -52,7 +53,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         data: ByteArray,
         mimeType: ContentType,
         request: UploadFileRequest
-    ) = uploadGeneric(
+    ) = uploadGeneric<UploadFileRequest, UploadFileResponse>(
         data,
         "file",
         mimeType,
@@ -63,19 +64,19 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         data: ByteArray,
         mimeType: ContentType,
         request: UploadImageRequest
-    ) = uploadGeneric(
+    ) = uploadGeneric<UploadImageRequest, UploadFileResponse>(
         data,
         "image",
         mimeType,
         request
     )
 
-    private suspend inline fun <reified T : UploadRequest> uploadGeneric(
+    private suspend inline fun <reified T : UploadRequest, reified R> uploadGeneric(
         data: ByteArray,
         type: String,
         mimeType: ContentType,
         request: T
-    ): T {
+    ): R {
         val parts = formData {
             append("attributes", Json.encodeToString(request))
 
@@ -95,7 +96,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
             header("Authorization", token)
         }
 
-        return Json.decodeFromString(response.readText())
+        return Json.decodeFromString<R>(response.readText())
     }
 
     // ===[ LINKS ]===
