@@ -3,6 +3,7 @@ package net.perfectdreams.dreamstorageservice.routes
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.application.*
 import io.ktor.http.*
+import io.ktor.request.*
 import io.ktor.response.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -86,7 +87,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                     return
                 }
 
-                val mutex = manipulationMutexes.getOrPut(joinedPath) { Mutex() }
+                val mutex = manipulationMutexes.getOrPut(joinedPath + "?${call.request.queryString()}") { Mutex() }
                 mutex.withLock {
                     val cachedManipulation = m.transaction {
                         ManipulatedStoredFile.find {

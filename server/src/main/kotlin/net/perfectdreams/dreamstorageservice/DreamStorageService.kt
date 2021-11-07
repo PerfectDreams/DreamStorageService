@@ -33,6 +33,7 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import kotlin.concurrent.thread
 
 class DreamStorageService {
     companion object {
@@ -191,7 +192,7 @@ class DreamStorageService {
     private suspend fun optimizePNG(data: ByteArray): ByteArray {
         logger.info { "Optimizing PNG image, size = ${data.size}" }
         val proc = ProcessBuilder(
-            (System.getenv("DSS_PNGQUANT_PATH") ?: "/usr/bin/pngquant"),
+            System.getenv("DSS_PNGQUANT_PATH") ?: "/usr/bin/pngquant",
             "--quality=100",
             "--strip",
             "-"
@@ -199,6 +200,7 @@ class DreamStorageService {
 
         proc.outputStream.write(data)
         proc.outputStream.flush()
+        proc.outputStream.close()
 
         val result = proc.inputStream.readAllBytes()
 
@@ -220,7 +222,7 @@ class DreamStorageService {
     private suspend fun optimizeJPEG(data: ByteArray): ByteArray {
         logger.info { "Optimizing JPG image, size = ${data.size}" }
         val proc = ProcessBuilder(
-            (System.getenv("DSS_JPEGOPTIM_PATH") ?: "/usr/bin/jpegoptim"),
+            System.getenv("DSS_JPEGOPTIM_PATH") ?: "/usr/bin/jpegoptim",
             "-m95",
             "--strip-all",
             "--stdin",
@@ -229,11 +231,12 @@ class DreamStorageService {
 
         proc.outputStream.write(data)
         proc.outputStream.flush()
+        proc.outputStream.close()
 
         val result = proc.inputStream.readAllBytes()
 
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
-        if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
+        if (s != 0) { // uuuh, this shouldn't happen if this is a JPG image...
             logger.warn { "Something went wrong while trying to optimize JPG image! Status = $s" }
             return data
         }
