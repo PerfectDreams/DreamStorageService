@@ -19,6 +19,7 @@ import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
 import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnFileRoute
 import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
+import net.perfectdreams.dreamstorageservice.routes.PutUploadImageRoute
 import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
@@ -43,6 +44,7 @@ class DreamStorageService {
 
     val routes = listOf(
         PutUploadFileRoute(this),
+        PutUploadImageRoute(this),
         DeleteFileLinkRoute(this),
         GetFileFromFileLinkRoute(this),
         GetNamespaceRoute(this),
