@@ -10,9 +10,9 @@ object AllowedImageCrops : LongIdTable() {
     val cropWidth = integer("crop_width")
     val cropHeight = integer("crop_height")
 
-    val storedFile = reference("stored_file", StoredFiles).index()
+    val storedImage = reference("stored_image", StoredImages).index()
 
     init {
-        index(true, storedFile, cropX, cropY, cropWidth, cropHeight)
+        index(true, storedImage, cropX, cropY, cropWidth, cropHeight)
     }
 }

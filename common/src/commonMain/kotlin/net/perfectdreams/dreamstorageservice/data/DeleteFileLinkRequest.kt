@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DeleteFileLinkRequest(
-    val path: String
+    val links: List<LinkInfo>
 )

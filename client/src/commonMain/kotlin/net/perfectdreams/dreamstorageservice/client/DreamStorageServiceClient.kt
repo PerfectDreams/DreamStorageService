@@ -11,12 +11,14 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.data.AllowedImageCropsListRequest
+import net.perfectdreams.dreamstorageservice.data.CreateFileLinkRequest
+import net.perfectdreams.dreamstorageservice.data.CreateImageLinkRequest
+import net.perfectdreams.dreamstorageservice.data.CreateImageLinkResponse
 import net.perfectdreams.dreamstorageservice.data.DeleteFileLinkRequest
+import net.perfectdreams.dreamstorageservice.data.DeleteImageLinkRequest
 import net.perfectdreams.dreamstorageservice.data.GetNamespaceResponse
-import net.perfectdreams.dreamstorageservice.data.UploadFileRequest
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.data.UploadImageRequest
-import net.perfectdreams.dreamstorageservice.data.UploadRequest
 
 class DreamStorageServiceClient(baseUrl: String, val token: String, val http: HttpClient) {
     companion object {
@@ -51,13 +53,12 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     // ===[ FILE UPLOAD ]===
     suspend fun uploadFile(
         data: ByteArray,
-        mimeType: ContentType,
-        request: UploadFileRequest
-    ) = uploadGeneric<UploadFileRequest, UploadFileResponse>(
+        mimeType: ContentType
+    ) = uploadGeneric<Unit, UploadFileResponse>(
         data,
         "file",
         mimeType,
-        request
+        Unit
     )
 
     suspend fun uploadImage(
@@ -71,7 +72,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         request
     )
 
-    private suspend inline fun <reified T : UploadRequest, reified R> uploadGeneric(
+    private suspend inline fun <reified T, reified R> uploadGeneric(
         data: ByteArray,
         type: String,
         mimeType: ContentType,
@@ -85,13 +86,12 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
                 data,
                 Headers.build {
                     append(HttpHeaders.ContentType, mimeType.toString())
-                    append(HttpHeaders.ContentDisposition, "filename=${request.path.substringAfterLast("/")}")
                 }
             )
         }
 
-        val response = http.submitFormWithBinaryData<HttpResponse>("${baseUrl}/api/$apiVersion/upload/$type", formData = parts) {
-            this.method = HttpMethod.Put
+        val response = http.submitFormWithBinaryData<HttpResponse>("${baseUrl}/api/$apiVersion/$type", formData = parts) {
+            this.method = HttpMethod.Post
 
             header("Authorization", token)
         }
@@ -100,10 +100,44 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     }
 
     // ===[ LINKS ]===
-    suspend fun deleteLink(
+    suspend fun createImageLinks(
+        request: CreateImageLinkRequest
+    ): CreateImageLinkResponse {
+        val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
+            this.body = Json.encodeToString(request)
+
+            header("Authorization", token)
+        }
+
+        return Json.decodeFromString(response.readText())
+    }
+
+    suspend fun createFileLinks(
+        request: CreateFileLinkRequest
+    ): CreateImageLinkResponse {
+        val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
+            this.body = Json.encodeToString(request)
+
+            header("Authorization", token)
+        }
+
+        return Json.decodeFromString(response.readText())
+    }
+
+    suspend fun deleteImageLinks(
+        request: DeleteImageLinkRequest
+    ) {
+        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
+            this.body = Json.encodeToString(request)
+
+            header("Authorization", token)
+        }
+    }
+
+    suspend fun deleteFileLinks(
         request: DeleteFileLinkRequest
     ) {
-        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/links") {
+        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
             this.body = Json.encodeToString(request)
 
             header("Authorization", token)
@@ -111,7 +145,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     }
 
     // ===[ IMAGE CROPS ]===
-    suspend fun setAllowedImageCrops(
+    suspend fun addAllowedImageCrops(
         fileId: Long,
         request: AllowedImageCropsListRequest
     ) {

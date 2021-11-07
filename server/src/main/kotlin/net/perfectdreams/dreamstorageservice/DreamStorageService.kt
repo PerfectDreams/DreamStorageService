@@ -13,21 +13,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
 import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.DeleteImageLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
-import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnFileRoute
-import net.perfectdreams.dreamstorageservice.routes.PutUploadFileRoute
-import net.perfectdreams.dreamstorageservice.routes.PutUploadImageRoute
+import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnImageRoute
+import net.perfectdreams.dreamstorageservice.routes.PostUploadFileRoute
+import net.perfectdreams.dreamstorageservice.routes.PostUploadImageRoute
+import net.perfectdreams.dreamstorageservice.routes.PutFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.PutImageLinkRoute
 import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
-import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredFiles
+import net.perfectdreams.dreamstorageservice.tables.ImageLinks
+import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredImages
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
+import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.FileUtils
-import net.perfectdreams.dreamstorageservice.utils.UploadedAsFileType
-import net.perfectdreams.dreamstorageservice.utils.exposed.createOrUpdatePostgreSQLEnum
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.DEFAULT_REPETITION_ATTEMPTS
 import org.jetbrains.exposed.sql.Database
@@ -43,12 +47,20 @@ class DreamStorageService {
     }
 
     val routes = listOf(
-        PutUploadFileRoute(this),
-        PutUploadImageRoute(this),
-        DeleteFileLinkRoute(this),
         GetFileFromFileLinkRoute(this),
         GetNamespaceRoute(this),
-        PutAllowedImageCropsOnFileRoute(this)
+
+
+        // ===[ FILES ]===
+        PostUploadFileRoute(this),
+        PutFileLinkRoute(this),
+        DeleteFileLinkRoute(this),
+
+        // ===[ IMAGES ]===
+        PostUploadImageRoute(this),
+        PutImageLinkRoute(this),
+        DeleteImageLinkRoute(this),
+        PutAllowedImageCropsOnImageRoute(this),
     )
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
@@ -77,11 +89,12 @@ class DreamStorageService {
     fun start() {
         runBlocking {
             transaction {
-                createOrUpdatePostgreSQLEnum(UploadedAsFileType.values())
                 SchemaUtils.createMissingTablesAndColumns(
                     StoredFiles,
+                    StoredImages,
                     FileLinks,
-                    ManipulatedStoredFiles,
+                    ImageLinks,
+                    ManipulatedStoredImages,
                     AuthorizationTokens,
                     AllowedImageCrops
                 )
@@ -126,9 +139,27 @@ class DreamStorageService {
         // Delete file because it is unused!
         if (count == 0L) {
             logger.info { "Deleting Stored File $storedFileId because there isn't any other link referencing it..." }
-            AllowedImageCrops.deleteWhere { AllowedImageCrops.storedFile eq storedFileId }
-            ManipulatedStoredFiles.deleteWhere { ManipulatedStoredFiles.storedFile eq storedFileId }
             StoredFiles.deleteWhere { StoredFiles.id eq storedFileId }
+        }
+    }
+
+    /**
+     * Deletes the [storedImageId] from the database if there isn't any other [FileLinks] using this file.
+     *
+     * Must be called within a transaction! If this method called "transaction" directly, it would cause issues (because it would create a new transaction)
+     */
+    fun checkAndCleanUpImage(storedImageId: Long) {
+        val count = ImageLinks.select { ImageLinks.storedImage eq storedImageId }
+            .count()
+
+        logger.info { "Stored Image $storedImageId has $count references" }
+
+        // Delete file because it is unused!
+        if (count == 0L) {
+            logger.info { "Deleting Stored Image $storedImageId because there isn't any other link referencing it..." }
+            AllowedImageCrops.deleteWhere { AllowedImageCrops.storedImage eq storedImageId }
+            ManipulatedStoredImages.deleteWhere { ManipulatedStoredImages.storedImage eq storedImageId }
+            StoredImages.deleteWhere { StoredImages.id eq storedImageId }
         }
     }
 
@@ -182,6 +213,19 @@ class DreamStorageService {
             }
         }
         throw lastException ?: RuntimeException("This should never happen")
+    }
+
+    suspend fun retrieveAuthenticationTokenFromNamespace(namespace: String): AuthorizationToken? {
+        val validKey = transaction {
+            AuthorizationTokens.select { AuthorizationTokens.namespace eq namespace }.firstOrNull()
+        } ?: return null
+
+        return AuthorizationToken(
+            validKey[AuthorizationTokens.id],
+            validKey[AuthorizationTokens.token],
+            validKey[AuthorizationTokens.description],
+            validKey[AuthorizationTokens.namespace]
+        )
     }
 
     suspend fun optimizeImage(type: ContentType, data: ByteArray): ByteArray {
