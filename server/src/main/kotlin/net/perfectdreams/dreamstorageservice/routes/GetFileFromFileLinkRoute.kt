@@ -175,7 +175,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
 
                         // If the JPEG image has alpha, the result file will be 0
                         // https://stackoverflow.com/a/66954103/7271796
-                        if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG && manipulatedImage.type == BufferedImage.TYPE_INT_RGB) {
+                        if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG && manipulatedImage.type != BufferedImage.TYPE_INT_RGB) {
                             val newBufferedImage = BufferedImage(
                                 manipulatedImage.width,
                                 manipulatedImage.height, BufferedImage.TYPE_INT_RGB
