@@ -38,15 +38,35 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
     override suspend fun onRequest(call: ApplicationCall) {
         val path = call.parameters.getAll("path")!!
         val joinedPath = path.joinToString("/")
+
+        // Remove the extension
+        val joinedPathWithoutExtension = joinedPath.substringBeforeLast(".")
         val storedFile = m.transaction {
-            FileLink.findById(joinedPath)?.storedFile
+            FileLink.findById(joinedPathWithoutExtension)?.storedFile
         }
 
         if (storedFile == null) {
             logger.info { "User requested file in link $joinedPath, but the file doesn't exist!" }
             call.respondText("", status = HttpStatusCode.NotFound)
         } else {
+            val fileExtension = joinedPath.substringAfterLast(".")
+
+            // We will get the file source mime type...
             val mimeType = ContentType.parse(storedFile.mimeType)
+            val mimeTypeBasedOnTheExtension = when (fileExtension) {
+                "png" -> ContentType.Image.PNG
+                "jpg", "jpeg" -> ContentType.Image.JPEG
+                else -> { // If all else fails, default to the file's mime type
+                    // In this case, we will only accept requests that match the original file extension
+                    if (storedFile.originalExtension != fileExtension) { // Doesn't match, bye!
+                        call.respondText("", status = HttpStatusCode.NotFound)
+                        return
+                    }
+
+                    mimeType
+                }
+            }
+
             val isImage = mimeType.contentType == "image"
 
             val cropX = call.request.queryParameters["crop_x"]?.toIntOrNull()
@@ -57,7 +77,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
 
             logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size" }
 
-            val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null
+            val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null || mimeType != mimeTypeBasedOnTheExtension
 
             if (requiresManipulation) {
                 // Can't crop/change size of something that isn't an image, right? lol
@@ -71,6 +91,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                     val cachedManipulation = m.transaction {
                         ManipulatedStoredFile.find {
                             ManipulatedStoredFiles.storedFile eq storedFile.id and
+                                    (ManipulatedStoredFiles.mimeType eq mimeTypeBasedOnTheExtension.toString()) and
                                     (ManipulatedStoredFiles.cropX eq cropX) and
                                     (ManipulatedStoredFiles.cropY eq cropY) and
                                     (ManipulatedStoredFiles.cropWidth eq cropWidth) and
@@ -83,15 +104,22 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; using cached manipulation" }
                         call.respondBytes(cachedManipulation.data, mimeType)
                     } else {
+                        // Supported Manipulation Sources
+                        if (mimeType != ContentType.Image.JPEG && mimeType != ContentType.Image.PNG) {
+                            call.respondText("", status = HttpStatusCode.BadRequest)
+                            return
+                        }
+
+                        // Supported Manipulation Targets
+                        if (mimeTypeBasedOnTheExtension != ContentType.Image.JPEG && mimeTypeBasedOnTheExtension != ContentType.Image.PNG) {
+                            call.respondText("", status = HttpStatusCode.BadRequest)
+                            return
+                        }
+
                         logger.info { "User requested file in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; creating manipulated image from scratch" }
                         var manipulatedImage: BufferedImage? = null
 
                         if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
-                            if (mimeType != ContentType.Image.JPEG && mimeType != ContentType.Image.PNG) {
-                                call.respondText("", status = HttpStatusCode.BadRequest)
-                                return
-                            }
-
                             // Check if this crop request is allowed
                             // (To avoid malicious users creating a lot of crop requests)
                             val isCropAllowed = m.transaction {
@@ -140,8 +168,18 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         }
 
                         val baos = ByteArrayOutputStream()
-                        ImageIO.write(manipulatedImage, if (mimeType == ContentType.Image.JPEG) "jpeg" else "png", baos)
+                        // We read the image if it is null because maybe we just want to convert it to another file type
+                        ImageIO.write(
+                            withContext(Dispatchers.IO) { ImageIO.read(storedFile.data.inputStream()) } ?: manipulatedImage,
+                            if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG) "jpeg" else "png",
+                            baos
+                        )
                         val byteArrayData = baos.toByteArray()
+
+                        // Optimize image
+                        var trueContentsToBeSent = byteArrayData
+                        if (mimeType.contentType == "image")
+                            trueContentsToBeSent = m.optimizeImage(mimeTypeBasedOnTheExtension, trueContentsToBeSent)
 
                         // Store the manipulated file in the database!
                         m.transaction {
@@ -149,7 +187,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                 // I don't know why it needs to be like this, this is a horrible hack
                                 // If we set the ID in the ".new(idhere) {}" call, it fails with a weird "created_at" is missing error
                                 // See: https://github.com/JetBrains/Exposed/issues/1379
-                                this.mimeType = mimeType.toString()
+                                this.mimeType = mimeTypeBasedOnTheExtension.toString()
                                 this.cropX = cropX
                                 this.cropY = cropY
                                 this.cropWidth = cropWidth
@@ -157,11 +195,11 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                 this.size = size
                                 this.createdAt = Instant.now()
                                 this.storedFile = storedFile
-                                this.data = byteArrayData
+                                this.data = trueContentsToBeSent
                             }
                         }
 
-                        call.respondBytes(byteArrayData, mimeType)
+                        call.respondBytes(trueContentsToBeSent, mimeType)
                     }
                 }
             } else {

@@ -176,4 +176,73 @@ class DreamStorageService {
         }
         throw lastException ?: RuntimeException("This should never happen")
     }
+
+    fun optimizeImage(type: ContentType, data: ByteArray): ByteArray {
+        require(type.contentType == "image") { "You can't optimize something that isn't a image!" }
+
+        return when (type) {
+            ContentType.Image.PNG -> optimizePNG(data)
+            ContentType.Image.JPEG -> optimizeJPEG(data)
+            else -> data
+        }
+    }
+
+    private fun optimizePNG(data: ByteArray): ByteArray {
+        logger.info { "Optimizing PNG image, size = ${data.size}" }
+        val proc = ProcessBuilder(
+            (System.getenv("DSS_PNGQUANT_PATH") ?: "/usr/bin/pngquant"),
+            "--quality=100",
+            "--strip",
+            "-"
+        ).start()
+
+        proc.outputStream.write(data)
+        proc.outputStream.flush()
+
+        val result = proc.inputStream.readAllBytes()
+
+        val s = proc.waitFor()
+        if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
+            logger.warn { "Something went wrong while trying to optimize PNG image! Status = $s" }
+            return data
+        }
+
+        if (result.size >= data.size) {
+            logger.info { "Tried optimizing the PNG image, but the original size ${data.size} is bigger than the optimized size ${result.size}!" }
+            return data
+        }
+
+        logger.info { "Successfully optimized PNG image from ${data.size} to ${result.size}!" }
+        return result
+    }
+
+    private fun optimizeJPEG(data: ByteArray): ByteArray {
+        logger.info { "Optimizing JPG image, size = ${data.size}" }
+        val proc = ProcessBuilder(
+            (System.getenv("DSS_JPEGOPTIM_PATH") ?: "/usr/bin/jpegoptim"),
+            "-m95",
+            "--strip-all",
+            "--stdin",
+            "--stdout"
+        ).start()
+
+        proc.outputStream.write(data)
+        proc.outputStream.flush()
+
+        val result = proc.inputStream.readAllBytes()
+
+        val s = proc.waitFor()
+        if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
+            logger.warn { "Something went wrong while trying to optimize JPG image! Status = $s" }
+            return data
+        }
+
+        if (result.size >= data.size) {
+            logger.info { "Tried optimizing the JPG image, but the original size ${data.size} is bigger than the optimized size ${result.size}!" }
+            return data
+        }
+
+        logger.info { "Successfully optimized JPG image from ${data.size} to ${result.size}!" }
+        return result
+    }
 }

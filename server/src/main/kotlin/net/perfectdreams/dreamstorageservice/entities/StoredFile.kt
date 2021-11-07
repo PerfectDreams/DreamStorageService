@@ -8,6 +8,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 class StoredFile(id: EntityID<Long>) : LongEntity(id) {
     companion object : LongEntityClass<StoredFile>(StoredFiles)
     var mimeType by StoredFiles.mimeType
+    var originalExtension by StoredFiles.originalExtension
     var shaHash by StoredFiles.shaHash
     var uploadedAt by StoredFiles.uploadedAt
     var createdBy by StoredFiles.createdBy

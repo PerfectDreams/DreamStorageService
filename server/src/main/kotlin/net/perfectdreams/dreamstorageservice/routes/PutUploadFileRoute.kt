@@ -17,7 +17,6 @@ import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
-import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens.token
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import org.apache.commons.codec.binary.Hex
@@ -45,29 +44,35 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
             val fileToBeStored = filePart.streamProvider.invoke().readAllBytes()
             val contentType = filePart.contentType ?: error("Missing Content-Type!")
 
+            var trueContentsToBeStored = fileToBeStored
+            if (!attributes.skipOptimizations && contentType.contentType == "image")
+                trueContentsToBeStored = m.optimizeImage(contentType, trueContentsToBeStored)
+
             // Calculate the checksum
             val checksum = calculateChecksum(SHA_256, fileToBeStored)
 
             // Allows the user to format the upload path with a SHA-256 hash, neat!
-            val pathWithoutNamespace = unformattedPath.format(Hex.encodeHexString(checksum))
-            val path = token.namespace + "/" + pathWithoutNamespace
+            val originalExtension = unformattedPath.substringAfter(".")
+            val pathWithoutNamespaceAndExtension = unformattedPath.format(Hex.encodeHexString(checksum)).substringBeforeLast(".")
+            val path = token.namespace + "/" + pathWithoutNamespaceAndExtension
 
             val (storedFile, fileLink) = uploadFileAndCreateFileLink(
                 token,
                 path,
+                originalExtension,
                 checksum,
                 contentType,
-                fileToBeStored
+                trueContentsToBeStored
             )
 
-            logger.info { "Uploaded file ${storedFile.id.value}${fileLink.path}" }
+            logger.info { "Uploaded file ${storedFile.id.value} ${fileLink.path}" }
 
             call.respondText(
                 Json.encodeToString(
                     UploadFileResponse(
                         storedFile.id.value,
-                        pathWithoutNamespace,
-                        path
+                        "$pathWithoutNamespaceAndExtension.$originalExtension",
+                        "$path.$originalExtension"
                     )
                 )
             )
@@ -77,6 +82,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
     private suspend fun uploadFileAndCreateFileLink(
         token: AuthorizationToken,
         path: String,
+        originalExtension: String,
         checksum: ByteArray,
         contentType: ContentType,
         fileData: ByteArray
@@ -89,6 +95,7 @@ class PutUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRout
                 // Create stored file
                 storedFile = StoredFile.new {
                     this.mimeType = contentType.toString()
+                    this.originalExtension = originalExtension
                     this.shaHash = checksum
                     this.uploadedAt = Instant.now()
                     this.createdBy = token.id

@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UploadFileRequest(
-    val path: String
+    val path: String,
+    val skipOptimizations: Boolean
 )
