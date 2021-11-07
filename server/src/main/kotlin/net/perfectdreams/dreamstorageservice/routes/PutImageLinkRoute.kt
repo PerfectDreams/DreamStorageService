@@ -13,8 +13,10 @@ import net.perfectdreams.dreamstorageservice.data.CreateImageLinkResponse
 import net.perfectdreams.dreamstorageservice.data.LinkInfo
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.ImageLink
+import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
+import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
@@ -35,10 +37,12 @@ class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute
                 return@transaction null
             }
 
+            val shaHashAsString = Hex.encodeHexString(alreadyStoredImage[StoredImages.shaHash])
+
             request.links.map {
                 ImageLink.new {
-                    folder = it.folder
-                    file = it.file
+                    folder = it.folder.format(shaHashAsString)
+                    file = it.file.format(shaHashAsString)
                     createdAt = Instant.now()
                     createdBy = token.id
                     storedImageId = alreadyStoredImage[StoredImages.id]

@@ -16,6 +16,7 @@ import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
+import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
@@ -29,17 +30,19 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
         val fileId = request.fileId
 
         val fileLinks = m.transaction {
-            val alreadyStoredFile = StoredFiles.slice(StoredFiles.id)
+            val alreadyStoredFile = StoredFiles.slice(StoredFiles.id, StoredFiles.shaHash)
                 .select {
                     StoredFiles.id eq fileId
                 }.firstOrNull() ?: run {
                 return@transaction null
             }
 
+            val shaHashAsString = Hex.encodeHexString(alreadyStoredFile[StoredFiles.shaHash])
+
             request.links.map {
                 FileLink.new {
-                    folder = it.folder
-                    file = it.file
+                    folder = it.folder.format(shaHashAsString)
+                    file = it.file.format(shaHashAsString)
                     createdAt = Instant.now()
                     createdBy = token.id
                     storedFileId = alreadyStoredFile[StoredFiles.id]
