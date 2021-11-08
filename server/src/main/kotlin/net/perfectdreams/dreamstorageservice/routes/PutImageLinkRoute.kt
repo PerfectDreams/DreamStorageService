@@ -35,7 +35,7 @@ class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute
         val imageId = request.imageId
 
         val imageLink = m.transaction {
-            val alreadyStoredImage = StoredImages.slice(StoredImages.id)
+            val alreadyStoredImage = StoredImages.slice(StoredImages.id, StoredImages.shaHash)
                 .select {
                     StoredImages.id eq imageId
                 }.firstOrNull() ?: run {
