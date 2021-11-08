@@ -139,7 +139,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     suspend fun deleteFileLink(
         request: DeleteFileLinkRequest
     ) {
-        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
+        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
             this.body = Json.encodeToString(request)
 
             header("Authorization", token)
