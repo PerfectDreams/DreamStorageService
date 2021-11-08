@@ -87,6 +87,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
                 data,
                 Headers.build {
                     append(HttpHeaders.ContentType, mimeType.toString())
+                    append(HttpHeaders.ContentDisposition, "filename=file") // This needs to be present for it to be recognized as a FileItem!
                 }
             )
         }
