@@ -13,10 +13,13 @@ import net.perfectdreams.dreamstorageservice.data.CreateFileLinkResponse
 import net.perfectdreams.dreamstorageservice.data.LinkInfo
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
+import net.perfectdreams.dreamstorageservice.entities.ImageLink
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
+import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
@@ -44,11 +47,19 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
             val formattedFolder = request.folder.format(shaHashAsString)
             val formattedFile = request.file.format(shaHashAsString)
 
-            FileLinks.deleteWhere { FileLinks.folder eq formattedFolder and (FileLinks.file eq formattedFile) }
+            val alreadyCreatedLink = FileLink.find { FileLinks.createdBy eq token.id and (FileLinks.folder eq formattedFolder) and (FileLinks.file eq formattedFile) }
+                .firstOrNull()
+
+            // There's already a link created with that name! Let's just return the already created link
+            if (alreadyCreatedLink?.createdBy == token.id)
+                return@transaction alreadyCreatedLink
+
+            // There's already a link created with that name but the file doesn't match! Let's delete it!!
+            alreadyCreatedLink?.delete()
 
             FileLink.new {
-                folder = request.folder.format(shaHashAsString)
-                file = request.file.format(shaHashAsString)
+                folder = formattedFolder
+                file = formattedFile
                 createdAt = Instant.now()
                 createdBy = token.id
                 storedFileId = alreadyStoredFile[StoredFiles.id]
