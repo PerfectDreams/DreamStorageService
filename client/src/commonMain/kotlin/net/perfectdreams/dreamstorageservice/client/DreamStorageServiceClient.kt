@@ -57,7 +57,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         mimeType: ContentType
     ) = uploadGeneric<Unit, UploadFileResponse>(
         data,
-        "file",
+        "files",
         mimeType,
         Unit
     )
@@ -68,7 +68,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         request: UploadImageRequest
     ) = uploadGeneric<UploadImageRequest, UploadImageResponse>(
         data,
-        "image",
+        "images",
         mimeType,
         request
     )
