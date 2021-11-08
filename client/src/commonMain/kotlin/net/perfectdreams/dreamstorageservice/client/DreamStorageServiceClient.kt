@@ -148,10 +148,10 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
 
     // ===[ IMAGE CROPS ]===
     suspend fun addAllowedImageCrops(
-        fileId: Long,
+        imageId: Long,
         request: AllowedImageCropsListRequest
     ) {
-        http.put<HttpResponse>("${baseUrl}/api/$apiVersion/files/${fileId}/allowed-crops") {
+        http.put<HttpResponse>("${baseUrl}/api/$apiVersion/images/${imageId}/allowed-crops") {
             this.body = Json.encodeToString(request)
 
             header("Authorization", token)
