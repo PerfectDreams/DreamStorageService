@@ -19,6 +19,7 @@ import net.perfectdreams.dreamstorageservice.data.DeleteImageLinkRequest
 import net.perfectdreams.dreamstorageservice.data.GetNamespaceResponse
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.data.UploadImageRequest
+import net.perfectdreams.dreamstorageservice.data.UploadImageResponse
 
 class DreamStorageServiceClient(baseUrl: String, val token: String, val http: HttpClient) {
     companion object {
@@ -65,7 +66,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         data: ByteArray,
         mimeType: ContentType,
         request: UploadImageRequest
-    ) = uploadGeneric<UploadImageRequest, UploadFileResponse>(
+    ) = uploadGeneric<UploadImageRequest, UploadImageResponse>(
         data,
         "image",
         mimeType,
