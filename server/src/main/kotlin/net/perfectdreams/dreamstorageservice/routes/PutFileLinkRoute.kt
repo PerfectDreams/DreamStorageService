@@ -13,9 +13,12 @@ import net.perfectdreams.dreamstorageservice.data.CreateFileLinkResponse
 import net.perfectdreams.dreamstorageservice.data.LinkInfo
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
+import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
@@ -37,6 +40,11 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
             }
 
             val shaHashAsString = Hex.encodeHexString(alreadyStoredFile[StoredFiles.shaHash])
+
+            val formattedFolder = request.folder.format(shaHashAsString)
+            val formattedFile = request.file.format(shaHashAsString)
+
+            FileLinks.deleteWhere { FileLinks.folder eq formattedFolder and (FileLinks.file eq formattedFile) }
 
             FileLink.new {
                 folder = request.folder.format(shaHashAsString)
