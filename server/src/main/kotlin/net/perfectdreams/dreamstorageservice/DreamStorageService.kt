@@ -247,8 +247,11 @@ class DreamStorageService {
             "-"
         ).start()
 
+        logger.info { "Writing data" }
         proc.outputStream.write(data)
+        logger.info { "Flushing data" }
         proc.outputStream.flush()
+        logger.info { "Closing output stream" }
         proc.outputStream.close()
 
         logger.info { "Sent all data to pngquant, now we just need to wait until the image is optimized..." }
@@ -289,7 +292,7 @@ class DreamStorageService {
         logger.info { "Sent all data to jpegoptim, now we just need to wait until the image is optimized..." }
         val result = proc.inputStream.readAllBytes()
         val errorStreamResult = proc.errorStream.readAllBytes()
-        
+
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
 
         logger.info { "pngquant's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
