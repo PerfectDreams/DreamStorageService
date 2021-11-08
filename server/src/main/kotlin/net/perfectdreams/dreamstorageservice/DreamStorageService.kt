@@ -247,11 +247,8 @@ class DreamStorageService {
             "-"
         ).start()
 
-        logger.info { "Writing data" }
         proc.outputStream.write(data)
-        logger.info { "Flushing data" }
         proc.outputStream.flush()
-        logger.info { "Closing output stream" }
         proc.outputStream.close()
 
         logger.info { "Sent all data to pngquant, now we just need to wait until the image is optimized..." }
