@@ -100,7 +100,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     }
 
     // ===[ LINKS ]===
-    suspend fun createImageLinks(
+    suspend fun createImageLink(
         request: CreateImageLinkRequest
     ): CreateImageLinkResponse {
         val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
@@ -112,7 +112,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         return Json.decodeFromString(response.readText())
     }
 
-    suspend fun createFileLinks(
+    suspend fun createFileLink(
         request: CreateFileLinkRequest
     ): CreateImageLinkResponse {
         val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
@@ -124,7 +124,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         return Json.decodeFromString(response.readText())
     }
 
-    suspend fun deleteImageLinks(
+    suspend fun deleteImageLink(
         request: DeleteImageLinkRequest
     ) {
         http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
@@ -134,7 +134,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         }
     }
 
-    suspend fun deleteFileLinks(
+    suspend fun deleteFileLink(
         request: DeleteFileLinkRequest
     ) {
         http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
