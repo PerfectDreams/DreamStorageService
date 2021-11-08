@@ -242,7 +242,7 @@ class DreamStorageService {
         logger.info { "Optimizing PNG image, size = ${data.size}" }
         val proc = ProcessBuilder(
             System.getenv("DSS_PNGQUANT_PATH") ?: "/usr/bin/pngquant",
-            "--quality=100",
+            "--quality=90-100",
             "--strip",
             "-"
         ).start()
@@ -251,9 +251,13 @@ class DreamStorageService {
         proc.outputStream.flush()
         proc.outputStream.close()
 
+        logger.info { "Sent all data to pngquant, now we just need to wait until the image is optimized..." }
         val result = proc.inputStream.readAllBytes()
+        val errorStreamResult = proc.errorStream.readAllBytes()
 
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
+
+        logger.info { "pngquant's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
         if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
             logger.warn { "Something went wrong while trying to optimize PNG image! Status = $s" }
             return data
@@ -282,9 +286,13 @@ class DreamStorageService {
         proc.outputStream.flush()
         proc.outputStream.close()
 
+        logger.info { "Sent all data to jpegoptim, now we just need to wait until the image is optimized..." }
         val result = proc.inputStream.readAllBytes()
-
+        val errorStreamResult = proc.errorStream.readAllBytes()
+        
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
+
+        logger.info { "pngquant's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
         if (s != 0) { // uuuh, this shouldn't happen if this is a JPG image...
             logger.warn { "Something went wrong while trying to optimize JPG image! Status = $s" }
             return data
