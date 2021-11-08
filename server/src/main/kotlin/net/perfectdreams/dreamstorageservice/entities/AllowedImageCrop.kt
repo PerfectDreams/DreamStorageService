@@ -13,6 +13,6 @@ class AllowedImageCrop(id: EntityID<Long>) : LongEntity(id) {
     var cropWidth by AllowedImageCrops.cropWidth
     var cropHeight by AllowedImageCrops.cropHeight
 
-    var storedFile by StoredFile referencedOn AllowedImageCrops.storedImage
+    var storedImage by StoredImage referencedOn AllowedImageCrops.storedImage
     var storedImageId by AllowedImageCrops.storedImage
 }
