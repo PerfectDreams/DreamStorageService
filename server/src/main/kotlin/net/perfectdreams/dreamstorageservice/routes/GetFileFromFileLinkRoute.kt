@@ -192,7 +192,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         requireNotNull(manipulatedImage) { "Manipulated image is null!" } // This should never be null at this point, but hey, who knows
 
                         // This will convert the image to the preferred content type
-                        // This is useful for JPEG images because if the image has alpha (TYPE_INT_RGBA), the result file will have 0 bytes
+                        // This is useful for JPEG images because if the image has alpha (TYPE_INT_ARGB), the result file will have 0 bytes
                         // https://stackoverflow.com/a/66954103/7271796
                         if (manipulatedImage.type != preferredImageType) {
                             val newBufferedImage = BufferedImage(
