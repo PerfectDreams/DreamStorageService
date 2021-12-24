@@ -8,6 +8,7 @@ import io.ktor.response.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
@@ -18,9 +19,12 @@ import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredImages
+import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.sequins.ktor.BaseRoute
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -66,14 +70,14 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
         // Remove the extension
         val joinedPathWithoutExtension = joinedPath.substringBeforeLast(".")
 
-        // Check for images
-        val storedImage = m.transaction {
+        // Check for image link
+        val storedImageLink = m.transaction {
             ImageLink.find {
                 ImageLinks.createdBy eq authToken.id and (ImageLinks.folder eq joinedFolderWithoutNamespace and (ImageLinks.file eq fileWithoutExtension))
-            }.firstOrNull()?.storedImage
+            }.firstOrNull()
         }
 
-        if (storedImage == null) {
+        if (storedImageLink == null) {
             // Check for files
             val storedFile = m.transaction {
                 FileLink.find {
@@ -90,10 +94,18 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             logger.info { "User requested image or file in link $joinedPath, but the image and the file doesn't exist!" }
             call.respondText("", status = HttpStatusCode.NotFound)
         } else {
+            // We do an slice here to avoid loading the entire image binary data into memory (for now)
+            val storedImageWithoutData = m.transaction {
+                StoredImages.slice(StoredImages.id, StoredImages.mimeType)
+                    .select { StoredImages.id eq storedImageLink.storedImageId }
+                    .limit(1)
+                    .first()
+            }
+
             val fileExtension = joinedPath.substringAfterLast(".")
 
             // We will get the file source mime type...
-            val mimeType = ContentType.parse(storedImage.mimeType)
+            val mimeType = ContentType.parse(storedImageWithoutData[StoredImages.mimeType])
 
             val mimeTypeBasedOnTheExtension = when (fileExtension) {
                 "png" -> ContentType.Image.PNG
@@ -116,135 +128,172 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null || mimeType != mimeTypeBasedOnTheExtension
 
             if (requiresManipulation) {
-                val mutex = manipulationMutexes.getOrPut(joinedPath + "?${call.request.queryString()}") { Mutex() }
-                mutex.withLock {
-                    val cachedManipulation = m.transaction {
-                        ManipulatedStoredImage.find {
-                            ManipulatedStoredImages.storedImage eq storedImage.id and
-                                    (ManipulatedStoredImages.mimeType eq mimeTypeBasedOnTheExtension.toString()) and
-                                    (ManipulatedStoredImages.cropX eq cropX) and
-                                    (ManipulatedStoredImages.cropY eq cropY) and
-                                    (ManipulatedStoredImages.cropWidth eq cropWidth) and
-                                    (ManipulatedStoredImages.cropHeight eq cropHeight) and
-                                    (ManipulatedStoredImages.size eq size)
-                        }.firstOrNull()
-                    }
-
-                    if (cachedManipulation != null) {
-                        logger.info { "User requested image in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; using cached manipulation" }
-                        call.respondBytes(cachedManipulation.data, mimeType)
-                    } else {
-                        // Supported Manipulation Targets
-                        // Currently GIFs isn't a supported manipulation target!
-                        val preferredImageType = when (mimeTypeBasedOnTheExtension) {
-                            ContentType.Image.PNG -> PREFERRED_PNG_TYPE
-                            ContentType.Image.JPEG -> PREFERRED_JPEG_TYPE
-                            else -> {
-                                call.respondText("", status = HttpStatusCode.BadRequest)
-                                return
-                            }
+                m.imageManipulationProcessesSemaphore.withPermit {
+                    val mutex = manipulationMutexes.getOrPut(joinedPath + "?${call.request.queryString()}") { Mutex() }
+                    mutex.withLock {
+                        val cachedManipulation = m.transaction {
+                            ManipulatedStoredImage.find {
+                                ManipulatedStoredImages.storedImage eq storedImageLink.id and
+                                        (ManipulatedStoredImages.mimeType eq mimeTypeBasedOnTheExtension.toString()) and
+                                        (ManipulatedStoredImages.cropX eq cropX) and
+                                        (ManipulatedStoredImages.cropY eq cropY) and
+                                        (ManipulatedStoredImages.cropWidth eq cropWidth) and
+                                        (ManipulatedStoredImages.cropHeight eq cropHeight) and
+                                        (ManipulatedStoredImages.size eq size)
+                            }.firstOrNull()
                         }
 
-                        logger.info { "User requested image in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; creating manipulated image from scratch" }
-                        var manipulatedImage: BufferedImage? = null
-
-                        if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
-                            // Check if this crop request is allowed
-                            // (To avoid malicious users creating a lot of crop requests)
-                            val isCropAllowed = m.transaction {
-                                AllowedImageCrops.select {
-                                    AllowedImageCrops.storedImage eq storedImage.id and
-                                            (AllowedImageCrops.cropX eq cropX) and
-                                            (AllowedImageCrops.cropY eq cropY) and
-                                            (AllowedImageCrops.cropWidth eq cropWidth) and
-                                            (AllowedImageCrops.cropHeight eq cropHeight)
-                                }.count() != 0L
+                        if (cachedManipulation != null) {
+                            logger.info { "User requested image in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; using cached manipulation" }
+                            call.respondBytes(cachedManipulation.data, mimeType)
+                        } else {
+                            // Supported Manipulation Targets
+                            // Currently GIFs isn't a supported manipulation target!
+                            val preferredImageType = when (mimeTypeBasedOnTheExtension) {
+                                ContentType.Image.PNG -> PREFERRED_PNG_TYPE
+                                ContentType.Image.JPEG -> PREFERRED_JPEG_TYPE
+                                else -> {
+                                    call.respondText("", status = HttpStatusCode.BadRequest)
+                                    return
+                                }
                             }
 
-                            if (!isCropAllowed) {
-                                call.respondText("", status = HttpStatusCode.Unauthorized)
-                                return
-                            }
+                            logger.info { "User requested image in link $joinedPath, cropX = $cropX; cropY = $cropY; cropWidth = $cropWidth; cropHeight = $cropHeight; size = $size; creating manipulated image from scratch" }
+                            var manipulatedImage: BufferedImage? = null
 
-                            val image = manipulatedImage ?: withContext(Dispatchers.IO) { ImageIO.read(storedImage.data.inputStream()) }
-                            manipulatedImage = image.getSubimage(cropX, cropY, cropWidth, cropHeight)
-                        }
-
-                        if (size != null) {
-                            if (size == 16 || size == 32 || size == 64 || size == 128 || size == 256 || size == 512) {
-                                val image = manipulatedImage ?: withContext(Dispatchers.IO) { ImageIO.read(storedImage.data.inputStream()) }
-                                val targetWidth: Int
-                                val targetHeight: Int
-
-                                if (image.height > image.width) {
-                                    targetHeight = size
-                                    targetWidth = (size * image.width) / image.height
-                                } else {
-                                    targetWidth = size
-                                    targetHeight = (size * image.height) / image.width
+                            if (cropX != null && cropY != null && cropWidth != null && cropHeight != null) {
+                                // Check if this crop request is allowed
+                                // (To avoid malicious users creating a lot of crop requests)
+                                val isCropAllowed = m.transaction {
+                                    AllowedImageCrops.select {
+                                        AllowedImageCrops.storedImage eq storedImageLink.id and
+                                                (AllowedImageCrops.cropX eq cropX) and
+                                                (AllowedImageCrops.cropY eq cropY) and
+                                                (AllowedImageCrops.cropWidth eq cropWidth) and
+                                                (AllowedImageCrops.cropHeight eq cropHeight)
+                                    }.count() != 0L
                                 }
 
-                                manipulatedImage = toBufferedImage(
-                                    image.getScaledInstance(targetWidth, targetHeight, BufferedImage.SCALE_SMOOTH),
+                                if (!isCropAllowed) {
+                                    call.respondText("", status = HttpStatusCode.Unauthorized)
+                                    return
+                                }
+
+                                val image = manipulatedImage ?: withContext(Dispatchers.IO) {
+                                    val storedImageData = m.transaction {
+                                        StoredImages.slice(StoredImages.data)
+                                            .select { StoredImages.id eq storedImageWithoutData[StoredImages.id] }
+                                            .limit(1)
+                                            .first()
+                                    }[StoredImages.data].inputStream()
+
+                                    ImageIO.read(storedImageData)
+                                }
+                                manipulatedImage = image.getSubimage(cropX, cropY, cropWidth, cropHeight)
+                            }
+
+                            if (size != null) {
+                                if (size == 16 || size == 32 || size == 64 || size == 128 || size == 256 || size == 512) {
+                                    val image = manipulatedImage ?: withContext(Dispatchers.IO) {
+                                        val storedImageData = m.transaction {
+                                            StoredImages.slice(StoredImages.data)
+                                                .select { StoredImages.id eq storedImageWithoutData[StoredImages.id] }
+                                                .limit(1)
+                                                .first()
+                                        }[StoredImages.data].inputStream()
+
+                                        ImageIO.read(storedImageData)
+                                    }
+                                    val targetWidth: Int
+                                    val targetHeight: Int
+
+                                    if (image.height > image.width) {
+                                        targetHeight = size
+                                        targetWidth = (size * image.width) / image.height
+                                    } else {
+                                        targetWidth = size
+                                        targetHeight = (size * image.height) / image.width
+                                    }
+
+                                    manipulatedImage = toBufferedImage(
+                                        image.getScaledInstance(targetWidth, targetHeight, BufferedImage.SCALE_SMOOTH),
+                                        preferredImageType
+                                    )
+                                } else {
+                                    call.respondText("", status = HttpStatusCode.BadRequest)
+                                    return
+                                }
+                            }
+
+                            // We read the image if it is null because maybe we just want to convert it to another file type
+                            if (manipulatedImage == null)
+                                manipulatedImage = withContext(Dispatchers.IO) {
+                                    val storedImageData = m.transaction {
+                                        StoredImages.slice(StoredImages.data)
+                                            .select { StoredImages.id eq storedImageWithoutData[StoredImages.id] }
+                                            .limit(1)
+                                            .first()
+                                    }[StoredImages.data].inputStream()
+
+                                    ImageIO.read(storedImageData)
+                                }
+
+                            requireNotNull(manipulatedImage) { "Manipulated image is null!" } // This should never be null at this point, but hey, who knows
+
+                            // This will convert the image to the preferred content type
+                            // This is useful for JPEG images because if the image has alpha (TYPE_INT_ARGB), the result file will have 0 bytes
+                            // https://stackoverflow.com/a/66954103/7271796
+                            if (manipulatedImage.type != preferredImageType) {
+                                val newBufferedImage = BufferedImage(
+                                    manipulatedImage.width,
+                                    manipulatedImage.height,
                                     preferredImageType
                                 )
-                            } else {
-                                call.respondText("", status = HttpStatusCode.BadRequest)
-                                return
+                                newBufferedImage.graphics.drawImage(manipulatedImage, 0, 0, null)
+                                manipulatedImage = newBufferedImage
                             }
-                        }
 
-                        // We read the image if it is null because maybe we just want to convert it to another file type
-                        if (manipulatedImage == null)
-                            manipulatedImage = withContext(Dispatchers.IO) { ImageIO.read(storedImage.data.inputStream()) }
-
-                        requireNotNull(manipulatedImage) { "Manipulated image is null!" } // This should never be null at this point, but hey, who knows
-
-                        // This will convert the image to the preferred content type
-                        // This is useful for JPEG images because if the image has alpha (TYPE_INT_ARGB), the result file will have 0 bytes
-                        // https://stackoverflow.com/a/66954103/7271796
-                        if (manipulatedImage.type != preferredImageType) {
-                            val newBufferedImage = BufferedImage(
-                                manipulatedImage.width,
-                                manipulatedImage.height,
-                                preferredImageType
+                            val baos = ByteArrayOutputStream()
+                            ImageIO.write(
+                                manipulatedImage,
+                                if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG) "jpg" else "png",
+                                baos
                             )
-                            newBufferedImage.graphics.drawImage(manipulatedImage, 0, 0, null)
-                            manipulatedImage = newBufferedImage
-                        }
+                            val byteArrayData = baos.toByteArray()
 
-                        val baos = ByteArrayOutputStream()
-                        ImageIO.write(
-                            manipulatedImage,
-                            if (mimeTypeBasedOnTheExtension == ContentType.Image.JPEG) "jpg" else "png",
-                            baos
-                        )
-                        val byteArrayData = baos.toByteArray()
+                            // Optimize image
+                            val trueContentsToBeSent = m.optimizeImage(mimeTypeBasedOnTheExtension, byteArrayData)
 
-                        // Optimize image
-                        val trueContentsToBeSent = m.optimizeImage(mimeTypeBasedOnTheExtension, byteArrayData)
-
-                        // Store the manipulated file in the database!
-                        m.transaction {
-                            ManipulatedStoredImage.new {
-                                this.mimeType = mimeTypeBasedOnTheExtension.toString()
-                                this.cropX = cropX
-                                this.cropY = cropY
-                                this.cropWidth = cropWidth
-                                this.cropHeight = cropHeight
-                                this.size = size
-                                this.createdAt = Instant.now()
-                                this.storedImage = storedImage
-                                this.data = trueContentsToBeSent
+                            // Store the manipulated file in the database!
+                            m.transaction {
+                                ManipulatedStoredImage.new {
+                                    this.mimeType = mimeTypeBasedOnTheExtension.toString()
+                                    this.cropX = cropX
+                                    this.cropY = cropY
+                                    this.cropWidth = cropWidth
+                                    this.cropHeight = cropHeight
+                                    this.size = size
+                                    this.createdAt = Instant.now()
+                                    this.storedImage = storedImage
+                                    this.data = trueContentsToBeSent
+                                }
                             }
-                        }
 
-                        call.respondBytes(trueContentsToBeSent, mimeType)
+                            call.respondBytes(trueContentsToBeSent, mimeType)
+                        }
                     }
                 }
             } else {
                 logger.info { "User requested image in link $joinedPath, no manipulation necessary" }
-                call.respondBytes(storedImage.data, mimeType)
+
+                val storedImageData = m.transaction {
+                    StoredImages.slice(StoredImages.data)
+                        .select { StoredImages.id eq storedImageWithoutData[StoredImages.id] }
+                        .limit(1)
+                        .first()
+                }[StoredImages.data]
+
+                call.respondBytes(storedImageData, mimeType)
             }
         }
     }
