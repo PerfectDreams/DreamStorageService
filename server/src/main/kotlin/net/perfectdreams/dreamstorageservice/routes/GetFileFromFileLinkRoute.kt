@@ -133,7 +133,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                     mutex.withLock {
                         val cachedManipulation = m.transaction {
                             ManipulatedStoredImage.find {
-                                ManipulatedStoredImages.storedImage eq storedImageLink.id and
+                                ManipulatedStoredImages.storedImage eq storedImageLink.storedImageId and
                                         (ManipulatedStoredImages.mimeType eq mimeTypeBasedOnTheExtension.toString()) and
                                         (ManipulatedStoredImages.cropX eq cropX) and
                                         (ManipulatedStoredImages.cropY eq cropY) and
@@ -166,7 +166,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                 // (To avoid malicious users creating a lot of crop requests)
                                 val isCropAllowed = m.transaction {
                                     AllowedImageCrops.select {
-                                        AllowedImageCrops.storedImage eq storedImageLink.id and
+                                        AllowedImageCrops.storedImage eq storedImageLink.storedImageId and
                                                 (AllowedImageCrops.cropX eq cropX) and
                                                 (AllowedImageCrops.cropY eq cropY) and
                                                 (AllowedImageCrops.cropWidth eq cropWidth) and
