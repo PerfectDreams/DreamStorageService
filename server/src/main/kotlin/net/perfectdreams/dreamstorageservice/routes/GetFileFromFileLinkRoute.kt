@@ -274,7 +274,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                                     this.cropHeight = cropHeight
                                     this.size = size
                                     this.createdAt = Instant.now()
-                                    this.storedImage = storedImage
+                                    this.storedImageId = storedImageWithoutData[StoredImages.id]
                                     this.data = trueContentsToBeSent
                                 }
                             }

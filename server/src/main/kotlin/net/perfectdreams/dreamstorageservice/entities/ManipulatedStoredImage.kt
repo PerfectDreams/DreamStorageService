@@ -16,5 +16,6 @@ class ManipulatedStoredImage(id: EntityID<Long>) : LongEntity(id) {
     var size by ManipulatedStoredImages.size
 
     var storedImage by StoredImage referencedOn ManipulatedStoredImages.storedImage
+    var storedImageId by ManipulatedStoredImages.storedImage
     var data by ManipulatedStoredImages.data
 }
