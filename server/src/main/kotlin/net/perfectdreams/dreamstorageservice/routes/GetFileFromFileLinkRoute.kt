@@ -94,7 +94,11 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             logger.info { "User requested image or file in link $joinedPath, but the image and the file doesn't exist!" }
             call.respondText("", status = HttpStatusCode.NotFound)
         } else {
-            // We do an slice here to avoid loading the entire image binary data into memory (for now)
+            // We do a slice here to avoid loading the entire image binary data into memory
+            // Then the files are *really* loaded when it is needed
+            // This helps with memory usage, because what if a flood of requests come asking for a specific image size?
+            // The image data would be held in memory until they can proceed in the semaphore, but we don't want that!
+            // So what we do? Only load the image binary data WHEN we really need it, this way we avoid Out of Memory Exceptions!
             val storedImageWithoutData = m.transaction {
                 StoredImages.slice(StoredImages.id, StoredImages.mimeType)
                     .select { StoredImages.id eq storedImageLink.storedImageId }
@@ -128,6 +132,10 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             val requiresManipulation = (cropX != null && cropY != null && cropWidth != null && cropHeight != null) || size != null || mimeType != mimeTypeBasedOnTheExtension
 
             if (requiresManipulation) {
+                // Just like before, this is also an optimization: We have a limit on how many images we can edit at the same time
+                // If a flood of requests requiring image manipulation comes in, we will only allow a max of 4, because trying to edit
+                // 100 images at the same time is super hard due, because you would load all images in memory and then GC would kick in, slowing down everything...
+                // So it is better to edit 4 images at a time, this way we can avoid GC pressure and everything is edited way faster!
                 m.imageManipulationProcessesSemaphore.withPermit {
                     val mutex = manipulationMutexes.getOrPut(joinedPath + "?${call.request.queryString()}") { Mutex() }
                     mutex.withLock {
