@@ -31,6 +31,7 @@ import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.tables.ManipulatedStoredImages
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
+import net.perfectdreams.dreamstorageservice.utils.FailedToOptimizeImageException
 import net.perfectdreams.dreamstorageservice.utils.FileUtils
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.DEFAULT_REPETITION_ATTEMPTS
@@ -40,6 +41,8 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.io.IOException
+import kotlin.concurrent.thread
 
 class DreamStorageService {
     companion object {
@@ -101,7 +104,7 @@ class DreamStorageService {
             }
         }
 
-        embeddedServer(Netty, port = 8080) {
+        embeddedServer(Netty, port = System.getenv("DSS_WEBSERVER_PORT")?.toInt() ?: 8080) {
             // Enables gzip and deflate compression
             install(Compression)
 
@@ -258,9 +261,11 @@ class DreamStorageService {
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
 
         logger.info { "pngquant's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
-        if (s != 0) { // uuuh, this shouldn't happen if this is a PNG image...
+        // https://manpages.debian.org/testing/pngquant/pngquant.1.en.html
+        // 99 = if quality can't match what we want, pngquant exists with exit code 99
+        if (s != 0 && s != 99) { // uuuh, this shouldn't happen if this is a PNG image...
             logger.warn { "Something went wrong while trying to optimize PNG image! Status = $s" }
-            return data
+            throw FailedToOptimizeImageException()
         }
 
         if (result.size >= data.size) {
@@ -282,7 +287,13 @@ class DreamStorageService {
             "--stdout"
         ).start()
 
-        proc.outputStream.write(data)
+        try {
+            proc.outputStream.write(data)
+        } catch (e: IOException) {
+            // This may happen if the jpeg has "additional" data when it shouldn't!
+            // The jpeg is optimized, but jpegoptim closes the pipe indicating that the file is already processed
+            logger.warn(e) { "IOException while trying to optimize JPG image! This may indicate that the JPEG has additional content, so as long as the image was optimized, correctly, we will continue." }
+        }
         proc.outputStream.flush()
         proc.outputStream.close()
 
@@ -292,10 +303,10 @@ class DreamStorageService {
 
         val s = withContext(Dispatchers.IO) { proc.waitFor() }
 
-        logger.info { "pngquant's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
+        logger.info { "jpegoptim's error stream: ${errorStreamResult.toString(Charsets.UTF_8)}"}
         if (s != 0) { // uuuh, this shouldn't happen if this is a JPG image...
             logger.warn { "Something went wrong while trying to optimize JPG image! Status = $s" }
-            return data
+            throw FailedToOptimizeImageException()
         }
 
         if (result.size >= data.size) {

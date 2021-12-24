@@ -17,6 +17,7 @@ import net.perfectdreams.dreamstorageservice.entities.ImageLink
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
+import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -51,7 +52,7 @@ class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(
                 .firstOrNull()
 
             // There's already a link created with that name! Let's just return the already created link
-            if (alreadyCreatedLink?.createdBy == token.id)
+            if (alreadyCreatedLink?.createdBy == token.id && alreadyCreatedLink.storedFileId == alreadyStoredFile[StoredFiles.id])
                 return@transaction alreadyCreatedLink
 
             // There's already a link created with that name but the file doesn't match! Let's delete it!!

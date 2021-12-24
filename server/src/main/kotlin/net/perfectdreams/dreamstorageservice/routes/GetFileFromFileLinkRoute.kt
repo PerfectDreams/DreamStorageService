@@ -48,6 +48,13 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
         val joinedFolderWithoutNamespace = path.drop(1)
             .dropLast(1)
             .joinToString("/")
+
+        // If it is empty, just return a error 404 not found
+        if (joinedFolderWithoutNamespace.isEmpty()) {
+            call.respondText("", status = HttpStatusCode.NotFound)
+            return
+        }
+
         val file = path.last()
         val fileWithoutExtension = file.substringBeforeLast(".")
 
@@ -59,7 +66,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
         // Remove the extension
         val joinedPathWithoutExtension = joinedPath.substringBeforeLast(".")
 
-        // Check for imaegs
+        // Check for images
         val storedImage = m.transaction {
             ImageLink.find {
                 ImageLinks.createdBy eq authToken.id and (ImageLinks.folder eq joinedFolderWithoutNamespace and (ImageLinks.file eq fileWithoutExtension))
@@ -91,6 +98,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
             val mimeTypeBasedOnTheExtension = when (fileExtension) {
                 "png" -> ContentType.Image.PNG
                 "jpg", "jpeg" -> ContentType.Image.JPEG
+                "gif" -> ContentType.Image.GIF
                 else -> { // Unsupported for now
                     call.respondText("", status = HttpStatusCode.NotFound)
                     return
@@ -127,6 +135,7 @@ class GetFileFromFileLinkRoute(val m: DreamStorageService) : BaseRoute("/{path..
                         call.respondBytes(cachedManipulation.data, mimeType)
                     } else {
                         // Supported Manipulation Targets
+                        // Currently GIFs isn't a supported manipulation target!
                         val preferredImageType = when (mimeTypeBasedOnTheExtension) {
                             ContentType.Image.PNG -> PREFERRED_PNG_TYPE
                             ContentType.Image.JPEG -> PREFERRED_JPEG_TYPE
