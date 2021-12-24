@@ -70,8 +70,9 @@ class DreamStorageService {
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
     private val ISOLATION_LEVEL = IsolationLevel.TRANSACTION_REPEATABLE_READ // We use repeatable read to avoid dirty and non-repeatable reads! Very useful and safe!!
-    // Trying to optimize all images at once won't work, it will just consume all memory and make the JVM exit with 137
-    private val optimizationProcessesSemaphore = Semaphore((Runtime.getRuntime().availableProcessors() - 1).coerceAtLeast(1))
+
+    // Trying to manipulation all images at once won't work, it will just consume all memory and make the JVM exit with 137
+    val imageManipulationProcessesSemaphore = Semaphore((Runtime.getRuntime().availableProcessors() - 1).coerceAtLeast(1))
 
     private val typesToCache = listOf(
         ContentType.Text.CSS,
@@ -94,8 +95,8 @@ class DreamStorageService {
     val fileUtils = FileUtils(this)
 
     fun start() {
-        logger.info { "Using ${optimizationProcessesSemaphore.availablePermits} permits for image optimization" }
-        
+        logger.info { "Using ${imageManipulationProcessesSemaphore.availablePermits} permits for image optimization" }
+
         runBlocking {
             transaction {
                 SchemaUtils.createMissingTablesAndColumns(
@@ -240,12 +241,10 @@ class DreamStorageService {
     suspend fun optimizeImage(type: ContentType, data: ByteArray): ByteArray {
         require(type.contentType == "image") { "You can't optimize something that isn't a image!" }
 
-        optimizationProcessesSemaphore.withPermit {
-            return when (type) {
-                ContentType.Image.PNG -> optimizePNG(data)
-                ContentType.Image.JPEG -> optimizeJPEG(data)
-                else -> data
-            }
+        return when (type) {
+            ContentType.Image.PNG -> optimizePNG(data)
+            ContentType.Image.JPEG -> optimizeJPEG(data)
+            else -> data
         }
     }
 
