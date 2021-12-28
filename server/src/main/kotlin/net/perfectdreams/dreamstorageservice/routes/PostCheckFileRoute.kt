@@ -7,6 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
+import net.perfectdreams.dreamstorageservice.data.CheckFileResponse
+import net.perfectdreams.dreamstorageservice.data.FileDoesNotExistResponse
+import net.perfectdreams.dreamstorageservice.data.FileExistsResponse
 import net.perfectdreams.dreamstorageservice.data.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
@@ -17,7 +20,7 @@ import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PostUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/files") {
+class PostCheckFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/files/check") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -44,35 +47,17 @@ class PostUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRou
             }
 
             if (alreadyStoredFile != null) {
-                call.respondJson(
-                    UploadFileResponse(
+                call.respondJson<CheckFileResponse>(
+                    FileExistsResponse(
                         alreadyStoredFile[StoredImages.id].value,
-                        false,
                         Hex.encodeHexString(alreadyStoredFile[StoredFiles.shaHash])
                     )
                 )
                 return@withContext
             }
 
-            // Okay, so the file doesn't exist, so let's upload it!
-            val storedFile = m.transaction {
-                StoredFile.new {
-                    this.mimeType = contentType.toString()
-                    this.shaHash = checksum
-                    this.uploadedAt = Instant.now()
-                    this.createdBy = token.id
-                    this.data = fileToBeStored
-                }
-            }
-
-            logger.info { "Uploaded file ${storedFile.id.value}" }
-
-            call.respondJson(
-                UploadFileResponse(
-                    storedFile.id.value,
-                    true,
-                    Hex.encodeHexString(storedFile.shaHash)
-                )
+            call.respondJson<CheckFileResponse>(
+                FileDoesNotExistResponse()
             )
         }
     }

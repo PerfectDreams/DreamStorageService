@@ -2,9 +2,13 @@ package net.perfectdreams.dreamstorageservice.data
 
 import kotlinx.serialization.Serializable
 
+sealed class CheckFileResponse
+
 @Serializable
-data class UploadFileResponse(
+data class FileExistsResponse(
     val fileId: Long,
-    val isUnique: Boolean,
     val shaHash: String
-)
+) : CheckFileResponse()
+
+@Serializable
+class FileDoesNotExistResponse : CheckFileResponse()

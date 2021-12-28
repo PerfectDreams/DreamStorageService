@@ -9,6 +9,10 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
+import net.perfectdreams.dreamstorageservice.data.CheckImageRequest
+import net.perfectdreams.dreamstorageservice.data.CheckImageResponse
+import net.perfectdreams.dreamstorageservice.data.ImageDoesNotExistResponse
+import net.perfectdreams.dreamstorageservice.data.ImageExistsResponse
 import net.perfectdreams.dreamstorageservice.data.UploadImageRequest
 import net.perfectdreams.dreamstorageservice.data.UploadImageResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
@@ -19,7 +23,7 @@ import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/images") {
+class PostCheckImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/api/v1/images/check") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -32,13 +36,13 @@ class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRo
             val filePart = parts.first { it.name == "file" } as PartData.FileItem
             val attributesPart = parts.first { it.name == "attributes" } as PartData.FormItem
 
-            val attributes = Json.decodeFromString<UploadImageRequest>(attributesPart.value)
+            val attributes = Json.decodeFromString<CheckImageRequest>(attributesPart.value)
 
             val fileToBeStored = filePart.streamProvider.invoke().readAllBytes()
             val contentType = filePart.contentType ?: error("Missing Content-Type!")
 
             if (contentType.contentType != "image")
-                error("Trying to upload a non-image file via the upload image endpoint!")
+                error("Trying to upload a non-image file via the check image endpoint!")
 
             var trueContentsToBeStored = fileToBeStored
 
@@ -54,10 +58,9 @@ class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRo
             }
 
             if (alreadyStoredImage != null) {
-                call.respondJson(
-                    UploadImageResponse(
+                call.respondJson<CheckImageResponse>(
+                    ImageExistsResponse(
                         alreadyStoredImage[StoredImages.id].value,
-                        false,
                         Hex.encodeHexString(alreadyStoredImage[StoredImages.shaHash]),
                         Hex.encodeHexString(alreadyStoredImage[StoredImages.originalShaHash]),
                     )
@@ -81,10 +84,9 @@ class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRo
                 }
 
                 if (alreadyStoredOptimizedImage != null) {
-                    call.respondJson(
-                        UploadImageResponse(
+                    call.respondJson<CheckImageResponse>(
+                        ImageExistsResponse(
                             alreadyStoredOptimizedImage[StoredImages.id].value,
-                            false,
                             Hex.encodeHexString(alreadyStoredOptimizedImage[StoredImages.shaHash]),
                             Hex.encodeHexString(alreadyStoredOptimizedImage[StoredImages.originalShaHash]),
                         )
@@ -93,27 +95,8 @@ class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRo
                 }
             }
 
-            // Okay, so none of the variations of the image exist, so let's upload it!
-            val storedImage = m.transaction {
-                StoredImage.new {
-                    this.mimeType = contentType.toString()
-                    this.shaHash = checksum
-                    this.originalShaHash = originalChecksum
-                    this.uploadedAt = Instant.now()
-                    this.createdBy = token.id
-                    this.data = trueContentsToBeStored
-                }
-            }
-
-            logger.info { "Uploaded image ${storedImage.id.value}" }
-
-            call.respondJson(
-                UploadImageResponse(
-                    storedImage.id.value,
-                    true,
-                    Hex.encodeHexString(storedImage.shaHash),
-                    Hex.encodeHexString(storedImage.originalShaHash)
-                )
+            call.respondJson<CheckImageResponse>(
+                ImageDoesNotExistResponse()
             )
         }
     }

@@ -3,8 +3,6 @@ package net.perfectdreams.dreamstorageservice.data
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class UploadFileResponse(
-    val fileId: Long,
-    val isUnique: Boolean,
-    val shaHash: String
+data class CheckImageRequest(
+    val skipOptimizations: Boolean
 )

@@ -20,7 +20,11 @@ import net.perfectdreams.dreamstorageservice.plugins.configureRouting
 import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.DeleteImageLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.GetFileLinkInfoRoute
+import net.perfectdreams.dreamstorageservice.routes.GetImageLinkInfoRoute
 import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
+import net.perfectdreams.dreamstorageservice.routes.PostCheckFileRoute
+import net.perfectdreams.dreamstorageservice.routes.PostCheckImageRoute
 import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnImageRoute
 import net.perfectdreams.dreamstorageservice.routes.PostUploadFileRoute
 import net.perfectdreams.dreamstorageservice.routes.PostUploadImageRoute
@@ -60,12 +64,16 @@ class DreamStorageService {
         PostUploadFileRoute(this),
         PutFileLinkRoute(this),
         DeleteFileLinkRoute(this),
+        GetFileLinkInfoRoute(this),
+        PostCheckFileRoute(this),
 
         // ===[ IMAGES ]===
         PostUploadImageRoute(this),
         PutImageLinkRoute(this),
         DeleteImageLinkRoute(this),
         PutAllowedImageCropsOnImageRoute(this),
+        GetImageLinkInfoRoute(this),
+        PostCheckImageRoute(this),
     )
 
     private val DRIVER_CLASS_NAME = "org.postgresql.Driver"
