@@ -56,7 +56,7 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     }
 
     suspend fun getNamespace(): String {
-        val response = http.get<HttpResponse>("$baseUrl/api/v1/namespace") {
+        val response = http.get<HttpResponse>("$baseUrl/api/$apiVersion/namespace") {
             header("Authorization", token)
         }
 
