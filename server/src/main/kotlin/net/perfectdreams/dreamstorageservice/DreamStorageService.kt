@@ -12,24 +12,23 @@ import io.ktor.server.netty.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
-import net.perfectdreams.dreamstorageservice.routes.DeleteFileLinkRoute
-import net.perfectdreams.dreamstorageservice.routes.DeleteImageLinkRoute
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
-import net.perfectdreams.dreamstorageservice.routes.GetFileLinkInfoRoute
-import net.perfectdreams.dreamstorageservice.routes.GetImageLinkInfoRoute
-import net.perfectdreams.dreamstorageservice.routes.GetNamespaceRoute
-import net.perfectdreams.dreamstorageservice.routes.PostCheckFileRoute
-import net.perfectdreams.dreamstorageservice.routes.PostCheckImageRoute
-import net.perfectdreams.dreamstorageservice.routes.PutAllowedImageCropsOnImageRoute
-import net.perfectdreams.dreamstorageservice.routes.PostUploadFileRoute
-import net.perfectdreams.dreamstorageservice.routes.PostUploadImageRoute
-import net.perfectdreams.dreamstorageservice.routes.PutFileLinkRoute
-import net.perfectdreams.dreamstorageservice.routes.PutImageLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.api.files.DeleteFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.api.GetNamespaceRoute
+import net.perfectdreams.dreamstorageservice.routes.api.files.GetFileLinksInfoRoute
+import net.perfectdreams.dreamstorageservice.routes.api.files.PostCheckFileRoute
+import net.perfectdreams.dreamstorageservice.routes.api.files.PostUploadFileRoute
+import net.perfectdreams.dreamstorageservice.routes.api.files.PutFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.DeleteImageLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.GetImageLinksInfoRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.PostCheckImageRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.PostUploadImageRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.PutAllowedImageCropsOnImageRoute
+import net.perfectdreams.dreamstorageservice.routes.api.images.PutImageLinkRoute
 import net.perfectdreams.dreamstorageservice.tables.AllowedImageCrops
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
@@ -48,7 +47,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.io.IOException
-import kotlin.concurrent.thread
 
 class DreamStorageService {
     companion object {
@@ -59,20 +57,19 @@ class DreamStorageService {
         GetFileFromFileLinkRoute(this),
         GetNamespaceRoute(this),
 
-
         // ===[ FILES ]===
+        GetFileLinksInfoRoute(this),
         PostUploadFileRoute(this),
         PutFileLinkRoute(this),
         DeleteFileLinkRoute(this),
-        GetFileLinkInfoRoute(this),
         PostCheckFileRoute(this),
 
         // ===[ IMAGES ]===
+        GetImageLinksInfoRoute(this),
         PostUploadImageRoute(this),
         PutImageLinkRoute(this),
         DeleteImageLinkRoute(this),
         PutAllowedImageCropsOnImageRoute(this),
-        GetImageLinkInfoRoute(this),
         PostCheckImageRoute(this),
     )
 
