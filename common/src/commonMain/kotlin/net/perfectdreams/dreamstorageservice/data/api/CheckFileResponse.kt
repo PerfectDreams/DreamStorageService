@@ -2,6 +2,7 @@ package net.perfectdreams.dreamstorageservice.data.api
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 sealed class CheckFileResponse
 
 @Serializable
