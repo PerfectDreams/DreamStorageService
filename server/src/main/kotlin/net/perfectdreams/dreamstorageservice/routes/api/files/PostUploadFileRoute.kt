@@ -11,7 +11,7 @@ import net.perfectdreams.dreamstorageservice.data.FileInfo
 import net.perfectdreams.dreamstorageservice.data.api.UploadFileResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.StoredFile
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
@@ -19,7 +19,7 @@ import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PostUploadFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/files") {
+class PostUploadFileRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/files") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

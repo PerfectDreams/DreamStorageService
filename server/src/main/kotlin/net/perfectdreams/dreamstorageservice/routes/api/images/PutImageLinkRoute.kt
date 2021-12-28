@@ -8,7 +8,7 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.api.CreateImageLinkRequest
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -22,7 +22,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/images/links") {
+class PutImageLinkRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/images/links") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

@@ -13,7 +13,7 @@ import net.perfectdreams.dreamstorageservice.data.api.CreateFileLinkRequest
 import net.perfectdreams.dreamstorageservice.data.api.CreateFileLinkResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.FileLink
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
@@ -22,7 +22,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/files/links") {
+class PutFileLinkRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/files/links") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

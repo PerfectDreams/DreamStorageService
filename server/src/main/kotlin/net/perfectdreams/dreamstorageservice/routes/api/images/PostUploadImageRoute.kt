@@ -14,14 +14,14 @@ import net.perfectdreams.dreamstorageservice.data.api.UploadImageRequest
 import net.perfectdreams.dreamstorageservice.data.api.UploadImageResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.StoredImage
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/images") {
+class PostUploadImageRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/images") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

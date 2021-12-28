@@ -8,7 +8,8 @@ import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.api.GetNamespaceResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 
-class GetNamespaceRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/namespace") {
+// TODO: This can be removed later, just a smol workaround because the client was still querying the API v1
+class GetNamespacev1Route(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/namespace") {
     override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
         call.respondText(Json.encodeToString(GetNamespaceResponse(token.namespace)))
     }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.data.api.CheckImageRequest
@@ -20,7 +20,7 @@ import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 
-class PostCheckImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/images/check") {
+class PostCheckImageRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/images/check") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

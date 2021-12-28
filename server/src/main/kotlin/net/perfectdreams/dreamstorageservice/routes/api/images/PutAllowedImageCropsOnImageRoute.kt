@@ -7,7 +7,7 @@ import io.ktor.response.*
 import io.ktor.util.*
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import net.perfectdreams.dreamstorageservice.data.api.AllowedImageCropsListRequest
@@ -19,7 +19,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import java.time.Instant
 
-class PutAllowedImageCropsOnImageRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/images/{imageId}/allowed-crops") {
+class PutAllowedImageCropsOnImageRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/images/{imageId}/allowed-crops") {
     override suspend fun onAuthenticatedRequest(call: ApplicationCall, token: AuthorizationToken) {
         val imageId = call.parameters.getOrFail("imageId").toLongOrNull()
         val request = Json.decodeFromString<AllowedImageCropsListRequest>(call.receiveText())

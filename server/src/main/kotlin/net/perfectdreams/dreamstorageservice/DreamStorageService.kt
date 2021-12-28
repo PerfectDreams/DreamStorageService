@@ -17,8 +17,9 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.plugins.configureRouting
 import net.perfectdreams.dreamstorageservice.routes.GetFileFromFileLinkRoute
+import net.perfectdreams.dreamstorageservice.routes.api.GetNamespacev1Route
 import net.perfectdreams.dreamstorageservice.routes.api.files.DeleteFileLinkRoute
-import net.perfectdreams.dreamstorageservice.routes.api.GetNamespaceRoute
+import net.perfectdreams.dreamstorageservice.routes.api.GetNamespacev2Route
 import net.perfectdreams.dreamstorageservice.routes.api.files.GetFileLinksInfoRoute
 import net.perfectdreams.dreamstorageservice.routes.api.files.PostCheckFileRoute
 import net.perfectdreams.dreamstorageservice.routes.api.files.PostUploadFileRoute
@@ -55,7 +56,8 @@ class DreamStorageService {
 
     val routes = listOf(
         GetFileFromFileLinkRoute(this),
-        GetNamespaceRoute(this),
+        GetNamespacev1Route(this),
+        GetNamespacev2Route(this),
 
         // ===[ FILES ]===
         GetFileLinksInfoRoute(this),

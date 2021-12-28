@@ -11,14 +11,14 @@ import net.perfectdreams.dreamstorageservice.data.api.CheckFileResponse
 import net.perfectdreams.dreamstorageservice.data.api.FileDoesNotExistResponse
 import net.perfectdreams.dreamstorageservice.data.api.FileExistsResponse
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.StoredFiles
 import net.perfectdreams.dreamstorageservice.tables.StoredImages
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.apache.commons.codec.binary.Hex
 import org.jetbrains.exposed.sql.select
 
-class PostCheckFileRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/files/check") {
+class PostCheckFileRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/files/check") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

@@ -10,7 +10,7 @@ import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.tables.AuthorizationTokens
 import org.jetbrains.exposed.sql.select
 
-abstract class RequiresAPIAuthenticationRoute(val m: DreamStorageService, path: String) : VersionedAPIRoute(path) {
+abstract class RequiresAPIv2AuthenticationRoute(val m: DreamStorageService, path: String) : VersionedAPIv2Route(path) {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

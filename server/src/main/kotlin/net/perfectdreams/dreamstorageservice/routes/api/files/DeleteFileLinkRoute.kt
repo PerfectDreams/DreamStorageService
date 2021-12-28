@@ -8,14 +8,14 @@ import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.api.DeleteFileLinkRequest
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.FileLinks
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 
-class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/files/links") {
+class DeleteFileLinkRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/files/links") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }

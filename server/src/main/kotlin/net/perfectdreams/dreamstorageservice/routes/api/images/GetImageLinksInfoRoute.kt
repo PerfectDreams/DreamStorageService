@@ -6,11 +6,11 @@ import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.ImageLinkInfo
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.entities.ImageLink
-import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIAuthenticationRoute
+import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute
 import net.perfectdreams.dreamstorageservice.tables.ImageLinks
 import net.perfectdreams.dreamstorageservice.utils.ktor.respondJson
 
-class GetImageLinksInfoRoute(m: DreamStorageService) : RequiresAPIAuthenticationRoute(m, "/images/links") {
+class GetImageLinksInfoRoute(m: DreamStorageService) : RequiresAPIv2AuthenticationRoute(m, "/images/links") {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
