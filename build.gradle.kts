@@ -1,7 +1,7 @@
 plugins {
-    kotlin("multiplatform") version "1.5.31" apply false
-    kotlin("jvm") version "1.5.31" apply false
-    kotlin("plugin.serialization") version "1.5.31" apply false
+    kotlin("multiplatform") version Versions.KOTLIN apply false
+    kotlin("jvm") version Versions.KOTLIN apply false
+    kotlin("plugin.serialization") version Versions.KOTLIN apply false
     id("maven-publish")
 }
 

@@ -3,12 +3,13 @@ package net.perfectdreams.dreamstorageservice
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import com.zaxxer.hikari.util.IsolationLevel
-import io.ktor.application.*
-import io.ktor.features.*
+import io.ktor.server.application.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.cachingheaders.*
+import io.ktor.server.plugins.compression.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
@@ -48,6 +49,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.io.IOException
+import javax.print.attribute.standard.Compression
 
 class DreamStorageService {
     companion object {
@@ -124,7 +126,7 @@ class DreamStorageService {
 
             // Enables caching for the specified types in the typesToCache list
             install(CachingHeaders) {
-                options { outgoingContent ->
+                options { _, outgoingContent ->
                     val contentType = outgoingContent.contentType
                     if (contentType != null) {
                         val contentTypeWithoutParameters = contentType.withoutParameters()

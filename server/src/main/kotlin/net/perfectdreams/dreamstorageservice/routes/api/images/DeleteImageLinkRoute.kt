@@ -1,7 +1,7 @@
 package net.perfectdreams.dreamstorageservice.routes.api.images
 
-import io.ktor.application.*
-import io.ktor.request.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.api.DeleteImageLinkRequest

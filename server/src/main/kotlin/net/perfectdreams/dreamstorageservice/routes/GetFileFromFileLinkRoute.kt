@@ -1,10 +1,10 @@
 package net.perfectdreams.dreamstorageservice.routes
 
 import com.github.benmanes.caffeine.cache.Caffeine
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

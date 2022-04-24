@@ -1,6 +1,6 @@
 package net.perfectdreams.dreamstorageservice.routes.api.files
 
-import io.ktor.application.*
+import io.ktor.server.application.*
 import mu.KotlinLogging
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.data.FileLinkInfo

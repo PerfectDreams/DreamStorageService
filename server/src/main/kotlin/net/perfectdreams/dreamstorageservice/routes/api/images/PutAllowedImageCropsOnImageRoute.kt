@@ -1,10 +1,10 @@
 package net.perfectdreams.dreamstorageservice.routes.api.images
 
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.util.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.util.*
 import net.perfectdreams.dreamstorageservice.DreamStorageService
 import net.perfectdreams.dreamstorageservice.entities.AuthorizationToken
 import net.perfectdreams.dreamstorageservice.routes.api.RequiresAPIv2AuthenticationRoute

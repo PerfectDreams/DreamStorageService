@@ -1,7 +1,7 @@
 package net.perfectdreams.dreamstorageservice.routes.api.files
 
-import io.ktor.application.*
-import io.ktor.request.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging

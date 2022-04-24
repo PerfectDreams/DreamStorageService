@@ -56,11 +56,11 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     }
 
     suspend fun getNamespace(): String {
-        val response = http.get<HttpResponse>("$baseUrl/api/$apiVersion/namespace") {
+        val response = http.get("$baseUrl/api/$apiVersion/namespace") {
             header("Authorization", token)
-        }
+        }.bodyAsText()
 
-        return json.decodeFromString<GetNamespaceResponse>(response.readText()).namespace
+        return json.decodeFromString<GetNamespaceResponse>(response).namespace
     }
 
     // ===[ FILE UPLOAD ]===
@@ -125,61 +125,61 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
             )
         }
 
-        val response = http.submitFormWithBinaryData<HttpResponse>("${baseUrl}/api/$apiVersion/$type", formData = parts) {
+        val response = http.submitFormWithBinaryData("${baseUrl}/api/$apiVersion/$type", formData = parts) {
             this.method = HttpMethod.Post
 
             header("Authorization", token)
         }
 
-        return json.decodeFromString<R>(response.readText())
+        return json.decodeFromString<R>(response.bodyAsText())
     }
 
     // ===[ LINKS ]===
     suspend fun createImageLink(
         request: CreateImageLinkRequest
     ): CreateImageLinkResponse {
-        val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
-            this.body = json.encodeToString(request)
+        val response = http.put("${baseUrl}/api/$apiVersion/images/links") {
+            setBody(json.encodeToString(request))
 
             header("Authorization", token)
         }
 
-        return json.decodeFromString(response.readText())
+        return json.decodeFromString(response.bodyAsText())
     }
 
     suspend fun createFileLink(
         request: CreateFileLinkRequest
     ): CreateImageLinkResponse {
-        val response = http.put<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
-            this.body = json.encodeToString(request)
+        val response = http.put("${baseUrl}/api/$apiVersion/files/links") {
+            setBody(json.encodeToString(request))
 
             header("Authorization", token)
         }
 
-        return json.decodeFromString(response.readText())
+        return json.decodeFromString(response.bodyAsText())
     }
 
     suspend fun getImageLinks(): List<ImageLinkInfo> {
-        val response = http.get<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
+        val response = http.get("${baseUrl}/api/$apiVersion/images/links") {
             header("Authorization", token)
         }
 
-        return json.decodeFromString(response.readText())
+        return json.decodeFromString(response.bodyAsText())
     }
 
     suspend fun getFileLinks(): List<FileLinkInfo> {
-        val response = http.get<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
+        val response = http.get("${baseUrl}/api/$apiVersion/files/links") {
             header("Authorization", token)
         }
 
-        return json.decodeFromString(response.readText())
+        return json.decodeFromString(response.bodyAsText())
     }
 
     suspend fun deleteImageLink(
         request: DeleteImageLinkRequest
     ) {
-        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/images/links") {
-            this.body = json.encodeToString(request)
+        http.delete("${baseUrl}/api/$apiVersion/images/links") {
+            setBody(json.encodeToString(request))
 
             header("Authorization", token)
         }
@@ -188,8 +188,8 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
     suspend fun deleteFileLink(
         request: DeleteFileLinkRequest
     ) {
-        http.delete<HttpResponse>("${baseUrl}/api/$apiVersion/files/links") {
-            this.body = json.encodeToString(request)
+        http.delete("${baseUrl}/api/$apiVersion/files/links") {
+            setBody(json.encodeToString(request))
 
             header("Authorization", token)
         }
@@ -200,8 +200,8 @@ class DreamStorageServiceClient(baseUrl: String, val token: String, val http: Ht
         imageId: Long,
         request: AllowedImageCropsListRequest
     ) {
-        http.put<HttpResponse>("${baseUrl}/api/$apiVersion/images/${imageId}/allowed-crops") {
-            this.body = json.encodeToString(request)
+        http.put("${baseUrl}/api/$apiVersion/images/${imageId}/allowed-crops") {
+            setBody(json.encodeToString(request))
 
             header("Authorization", token)
         }
